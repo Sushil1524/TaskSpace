@@ -59,4 +59,7 @@ interface TaskDao {
     
     @Query("SELECT * FROM tasks WHERE id = :taskId")
     fun getTaskById(taskId: String): Flow<Task?>
+
+    @Query("SELECT * FROM tasks WHERE repeat != 'None'")
+    fun getRepeatingTasks(): Flow<List<Task>>
 }

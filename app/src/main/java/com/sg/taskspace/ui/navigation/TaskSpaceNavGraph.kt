@@ -26,7 +26,6 @@ fun TaskSpaceNavGraph(
         composable("home") {
             HomeScreen(
                 viewModel = viewModel,
-                onTaskClick = { taskId -> navController.navigate("task_detail/$taskId") },
                 onWeeklyTasksClick = { navController.navigate("weekly_tasks") }
             )
         }

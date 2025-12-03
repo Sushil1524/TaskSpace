@@ -1,5 +1,6 @@
 package com.sg.taskspace.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,7 +11,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -24,28 +33,76 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.sg.taskspace.data.Task
+import com.sg.taskspace.ui.components.TaskCard
 import com.sg.taskspace.ui.viewmodel.TaskViewModel
 import java.time.LocalDate
-import java.time.format.TextStyle
 import java.util.Locale
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: TaskViewModel,
-    onTaskClick: (String) -> Unit,
     onWeeklyTasksClick: () -> Unit
 ) {
     val tasks by viewModel.currentDisplayTasks.collectAsState()
     val formattedDate = viewModel.formattedDate
     val weekNumber = viewModel.weekNumber
-    val motivationText by viewModel.motivationText.collectAsState()
+    // motivationText removed as it was unused
     val selectedDate by viewModel.selectedDate.collectAsState()
-    
+    val weeklyStats by viewModel.weeklyStats.collectAsState()
+    val weeklyTasks by viewModel.weeklyTasks.collectAsState()
+
     var showBottomSheet by remember { mutableStateOf(false) }
+    var selectedTask by remember { mutableStateOf<Task?>(null) }
+    var selectedDayForDialog by remember { mutableStateOf<LocalDate?>(null) }
+
+    // Task Detail Dialog
+    if (selectedTask != null) {
+        com.sg.taskspace.ui.components.TaskDetailDialog(
+            task = selectedTask!!,
+            onDismissRequest = { selectedTask = null },
+            onUpdateTask = { updatedTask ->
+                viewModel.updateTaskDetails(updatedTask)
+                selectedTask = null
+            },
+            onDeleteTask = { taskToDelete ->
+                viewModel.deleteTask(taskToDelete)
+                selectedTask = null
+            }
+        )
+    }
+
+    // Day Details Dialog
+    if (selectedDayForDialog != null) {
+        val date = selectedDayForDialog!!
+        val dateIso = date.format(java.time.format.DateTimeFormatter.ISO_DATE)
+        val dayName = date.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }
+        
+        // Filter tasks for this day from weeklyTasks
+        // Note: This logic duplicates VM logic slightly but is fast for UI
+        val dayTasks = weeklyTasks.filter { task ->
+            task.createdForDate == dateIso || 
+            task.repeat == "Daily" || 
+            (task.repeat == "Weekly" && task.repeatDayOfWeek == dayName)
+        }
+        
+        val stats = weeklyStats.find { it.date == date }
+
+        com.sg.taskspace.ui.components.DayDetailsDialog(
+            date = date,
+            stats = stats,
+            tasks = dayTasks,
+            onDismissRequest = { selectedDayForDialog = null },
+            onTaskClick = { task ->
+                selectedDayForDialog = null
+                selectedTask = task
+            }
+        )
+    }
 
     if (showBottomSheet) {
         com.sg.taskspace.ui.components.AddTaskBottomSheet(
@@ -62,109 +119,278 @@ fun HomeScreen(
             FloatingActionButton(
                 onClick = { showBottomSheet = true },
                 containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shape = CircleShape
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Task")
             }
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             // 1. Header
             item {
-                Column(modifier = Modifier.padding(top = 16.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp, bottom = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
-                        text = "TaskSpace",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
+                        text = "Task Historian",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
                     )
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Icon(Icons.Default.History, contentDescription = "History", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(Icons.Default.EmojiEvents, contentDescription = "Trophies", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(Icons.Default.BarChart, contentDescription = "Analytics", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(Icons.Default.CalendarMonth, contentDescription = "Calendar", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
 
             // 2. Date & Week
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = formattedDate,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold
+                        text = formattedDate, // e.g., Friday, November 28, 2025
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onBackground
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = weekNumber,
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = weekNumber, // e.g., Week 48
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            // 3. Motivation Box
+            // 3. Motivation/Stats Card
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    Text(
-                        text = motivationText,
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
+                    Column(modifier = Modifier.padding(24.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "GOOD AFTERNOON",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                letterSpacing = 1.sp
+                            )
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.TrendingUp, // Placeholder for graph icon
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Ready to plan your day?",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        
+                        // Stats Row
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            val total = tasks.size
+                            val done = tasks.count { it.isCompleted }
+                            val progress = if (total > 0) (done.toFloat() / total * 100).toInt() else 0
+                            
+                            StatColumn("Total", total.toString())
+                            StatColumn("Done", done.toString())
+                            StatColumn("Progress", "$progress%")
+                        }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        // Progress Bar
+                        val total = tasks.size
+                        val done = tasks.count { it.isCompleted }
+                        val progressFraction = if (total > 0) done.toFloat() / total else 0f
+                        LinearProgressIndicator(
+                            progress = { progressFraction },
+                            modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.background // Darker track
+                        )
+                    }
+                }
+            }
+
+            // 3.5 Level/XP Card (New)
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Level 1",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "0 XP",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 
             // 4. Weekly Progress
             item {
-                WeeklyProgressRow(
-                    selectedDate = selectedDate,
-                    onDateSelected = { viewModel.selectDate(it) }
-                )
-            }
-
-            // 5. Edit Weekly Task Button
-            item {
-                Button(
-                    onClick = { onWeeklyTasksClick() },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text("Edit Weekly Tasks")
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "This Week's Progress",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                    WeeklyProgressRow(
+                        selectedDate = selectedDate,
+                        weeklyStats = weeklyStats,
+                        onDateSelected = { viewModel.selectDate(it) },
+                        onDayClick = { date -> selectedDayForDialog = date }
+                    )
                 }
             }
 
-            // 6. Today's Task Section
+            // 4.5 Weekly Reflection Card (New)
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Book, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Weekly Reflection",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Input Field Placeholder
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(100.dp)
+                                .border(1.dp, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
+                                .padding(16.dp)
+                        ) {
+                            Text(
+                                text = "What went well this week? What can be improved?",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Button(
+                            onClick = { /* TODO: Save Reflection */ },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                        ) {
+                            Icon(Icons.Default.Save, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Save Notes")
+                        }
+                    }
+                }
+            }
+
+            // 4.6 Set Up Weekly Plan Button (New)
+            item {
+                Button(
+                    onClick = { onWeeklyTasksClick() },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Icon(Icons.Default.CalendarMonth, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Set Up Weekly Plan", style = MaterialTheme.typography.titleMedium)
+                }
+            }
+
+            // 5. Today's Task Section
             item {
                 Text(
                     text = "Today's Tasks",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 8.dp)
+                    color = MaterialTheme.colorScheme.onBackground
                 )
             }
 
             if (tasks.isEmpty()) {
                 item {
-                    Box(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(32.dp),
-                        contentAlignment = Alignment.Center
+                            .padding(top = 32.dp, bottom = 64.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle, // Using CheckCircle for thicker look
+                            contentDescription = null,
+                            modifier = Modifier.size(80.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "No tasks yet! \nAdd some to get started.",
+                            text = "No tasks for today.\nAdd some tasks to get started!",
                             textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.bodyLarge,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -174,7 +400,8 @@ fun HomeScreen(
                     TaskCard(
                         task = task, 
                         onCheckedChange = { viewModel.toggleTaskCompletion(task) },
-                        onClick = { onTaskClick(task.id) }
+                        onClick = { selectedTask = task },
+                        onDelete = { viewModel.deleteTask(task) }
                     )
                 }
             }
@@ -186,110 +413,90 @@ fun HomeScreen(
 }
 
 @Composable
-fun WeeklyProgressRow(
-    selectedDate: LocalDate,
-    onDateSelected: (LocalDate) -> Unit
-) {
-    // Calculate start of week (Monday) based on selectedDate or current date
-    // For simplicity, let's just show the current week of the *selected* date
-    val currentDayOfWeek = selectedDate.dayOfWeek.value // 1 (Mon) - 7 (Sun)
-    val startOfWeek = selectedDate.minusDays((currentDayOfWeek - 1).toLong())
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        for (i in 0 until 7) {
-            val date = startOfWeek.plusDays(i.toLong())
-            val isSelected = date == selectedDate
-            val dayName = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()).take(1)
-            
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(
-                        if (isSelected) MaterialTheme.colorScheme.primary 
-                        else MaterialTheme.colorScheme.surfaceVariant
-                    )
-                    .clickable { onDateSelected(date) }
-                    .padding(vertical = 8.dp, horizontal = 12.dp)
-            ) {
-                Text(
-                    text = dayName,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = date.dayOfMonth.toString(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
+private fun StatColumn(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
 @Composable
-fun TaskCard(task: Task, onCheckedChange: (Boolean) -> Unit, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+fun WeeklyProgressRow(
+    selectedDate: LocalDate,
+    weeklyStats: List<TaskViewModel.DayStats>,
+    onDateSelected: (LocalDate) -> Unit,
+    onDayClick: (LocalDate) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Circular Checkbox
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .clip(CircleShape)
-                    .border(
-                        width = 2.dp,
-                        color = if (task.isCompleted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-                        shape = CircleShape
-                    )
-                    .background(if (task.isCompleted) MaterialTheme.colorScheme.primary else Color.Transparent)
-                    .clickable { onCheckedChange(!task.isCompleted) },
-                contentAlignment = Alignment.Center
-            ) {
-                if (task.isCompleted) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
+        val displayStats = weeklyStats.ifEmpty {
+            val current = LocalDate.now()
+            val start = current.minusDays((current.dayOfWeek.value - 1).toLong())
+            (0..6).map {
+                TaskViewModel.DayStats(start.plusDays(it.toLong()), 0, 0)
             }
+        }
 
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = task.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    textDecoration = if (task.isCompleted) TextDecoration.LineThrough else null,
-                    color = if (task.isCompleted) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurface
-                )
-                if (!task.notes.isNullOrBlank()) {
-                    Text(
-                        text = task.notes,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
+        displayStats.forEach { stat ->
+            val isSelected = stat.date == selectedDate
+            val dayName = stat.date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, Locale.getDefault()).take(3).uppercase()
+            
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .width(48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant) // Always dark background
+                    .border(
+                        width = if (isSelected) 1.dp else 0.dp,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                        shape = RoundedCornerShape(12.dp)
                     )
-                }
+                    .clickable { 
+                        onDateSelected(stat.date)
+                        onDayClick(stat.date)
+                    }
+                    .padding(vertical = 12.dp)
+            ) {
+                Text(
+                    text = dayName,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 10.sp
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stat.date.dayOfMonth.toString(),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                // Indicator dot/dash
+                Box(
+                    modifier = Modifier
+                        .width(12.dp)
+                        .height(2.dp)
+                        .background(
+                            if (stat.totalTasks > 0) MaterialTheme.colorScheme.onSurfaceVariant else Color.Transparent, 
+                            RoundedCornerShape(1.dp)
+                        )
+                )
             }
         }
     }
 }
+
+

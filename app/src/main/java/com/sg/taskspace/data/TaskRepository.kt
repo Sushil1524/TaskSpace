@@ -24,4 +24,6 @@ class TaskRepository(private val taskDao: TaskDao) {
     fun getTotalCount(date: String): Flow<Int> = taskDao.getTotalTaskCountForDate(date)
     
     fun getTaskById(taskId: String): Flow<Task?> = taskDao.getTaskById(taskId)
+
+    fun getRepeatingTasks(): Flow<List<Task>> = taskDao.getRepeatingTasks()
 }

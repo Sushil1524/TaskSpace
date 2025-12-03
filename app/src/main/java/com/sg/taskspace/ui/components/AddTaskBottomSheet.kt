@@ -65,13 +65,17 @@ fun AddTaskBottomSheet(
                 }
             }
 
-            // Category (Simple text field for now, or chips)
-            OutlinedTextField(
-                value = category,
-                onValueChange = { category = it },
-                label = { Text("Category") },
-                modifier = Modifier.fillMaxWidth()
-            )
+            // Category
+            Text("Category", style = MaterialTheme.typography.labelLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("General", "Study", "Personal", "Work").forEach { c ->
+                    FilterChip(
+                        selected = category == c,
+                        onClick = { category = c },
+                        label = { Text(c) }
+                    )
+                }
+            }
 
             // Repeat
             Text("Repeat", style = MaterialTheme.typography.labelLarge)

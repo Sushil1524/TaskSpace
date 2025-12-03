@@ -83,18 +83,65 @@ class TaskViewModel(private val taskRepository: TaskRepository) : ViewModel() {
         _selectedDate.value = date
     }
 
-    // Weekly Tasks Logic
+    // Categories
+    val categories = listOf("General", "Study", "Personal", "Work")
+
+    data class DayStats(val date: LocalDate, val totalTasks: Int, val completedTasks: Int)
+
+    // Weekly Stats Logic
     @OptIn(ExperimentalCoroutinesApi::class)
-    val weeklyTasks: StateFlow<List<Task>> = _selectedDate.flatMapLatest { date ->
-        // Calculate start and end of week
+    val weeklyStats: StateFlow<List<DayStats>> = _selectedDate.flatMapLatest { date ->
         val currentDayOfWeek = date.dayOfWeek.value
         val startOfWeek = date.minusDays((currentDayOfWeek - 1).toLong())
         val endOfWeek = startOfWeek.plusDays(6)
-        
+        val startIso = startOfWeek.format(DateTimeFormatter.ISO_DATE)
+        val endIso = endOfWeek.format(DateTimeFormatter.ISO_DATE)
+
+        kotlinx.coroutines.flow.combine(
+            taskRepository.getTasksForDateRange(startIso, endIso),
+            taskRepository.getRepeatingTasks()
+        ) { rangeTasks, repeatingTasks ->
+            val stats = mutableListOf<DayStats>()
+            for (i in 0 until 7) {
+                val currentDate = startOfWeek.plusDays(i.toLong())
+                val dateIso = currentDate.format(DateTimeFormatter.ISO_DATE)
+                val dayName = currentDate.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }
+
+                val dailyTasks = rangeTasks.filter { it.createdForDate == dateIso } +
+                        repeatingTasks.filter { 
+                            it.repeat == "Daily" || (it.repeat == "Weekly" && it.repeatDayOfWeek == dayName)
+                        }
+                
+                stats.add(DayStats(
+                    date = currentDate,
+                    totalTasks = dailyTasks.size,
+                    completedTasks = dailyTasks.count { it.isCompleted }
+                ))
+            }
+            stats
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    // Weekly Tasks Logic (Updated to include repeating tasks)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val weeklyTasks: StateFlow<List<Task>> = _selectedDate.flatMapLatest { date ->
+        val currentDayOfWeek = date.dayOfWeek.value
+        val startOfWeek = date.minusDays((currentDayOfWeek - 1).toLong())
+        val endOfWeek = startOfWeek.plusDays(6)
         val startIso = startOfWeek.format(DateTimeFormatter.ISO_DATE)
         val endIso = endOfWeek.format(DateTimeFormatter.ISO_DATE)
         
-        taskRepository.getTasksForDateRange(startIso, endIso)
+        kotlinx.coroutines.flow.combine(
+            taskRepository.getTasksForDateRange(startIso, endIso),
+            taskRepository.getRepeatingTasks()
+        ) { rangeTasks, repeatingTasks ->
+             // Just return all unique tasks relevant to this week
+             (rangeTasks + repeatingTasks).distinctBy { it.id }
+        }
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
