@@ -4,7 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import com.sg.taskspace.ui.TaskSpaceNavGraph
+import com.sg.taskspace.ui.navigation.TaskSpaceNavGraph
 import com.sg.taskspace.ui.theme.TaskSpaceTheme
 
 class MainActivity : ComponentActivity() {

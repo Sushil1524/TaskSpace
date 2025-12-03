@@ -56,4 +56,7 @@ interface TaskDao {
     
     @Query("SELECT COUNT(*) FROM tasks WHERE createdForDate = :date")
     fun getTotalTaskCountForDate(date: String): Flow<Int>
+    
+    @Query("SELECT * FROM tasks WHERE id = :taskId")
+    fun getTaskById(taskId: String): Flow<Task?>
 }
