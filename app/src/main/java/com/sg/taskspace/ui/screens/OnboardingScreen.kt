@@ -26,92 +26,112 @@ fun OnboardingScreen(
     var currentStep by remember { mutableIntStateOf(0) }
     var name by remember { mutableStateOf("") }
 
-    // Steps: 0, 1, 2 (Tutorial), 3 (Name Input)
-
-
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
-                .padding(innerPadding)
                 .fillMaxSize()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+                .padding(innerPadding)
         ) {
-            Spacer(modifier = Modifier.weight(1f))
-
-            when (currentStep) {
-                0 -> TutorialSlide(
-                    title = "Organize Your Life",
-                    description = "Add daily and weekly tasks to keep track of your goals. Set priorities and categories to stay focused.",
-                    icon = Icons.Default.Check // Placeholder icon
-                )
-                1 -> TutorialSlide(
-                    title = "Track Your Progress",
-                    description = "Mark tasks as done and watch your streak grow. See your weekly progress at a glance.",
-                    icon = Icons.Default.Check // Placeholder
-                )
-                2 -> TutorialSlide(
-                    title = "Gain Insights",
-                    description = "View detailed analytics about your productivity. Discover your best days and areas for improvement.",
-                    icon = Icons.Default.Check // Placeholder
-                )
-                3 -> NameInputSlide(
-                    name = name,
-                    onNameChange = { name = it }
-                )
+            // Skip Button (Top Right)
+            if (currentStep < 3) {
+                TextButton(
+                    onClick = {
+                        viewModel.completeOnboarding()
+                        onOnboardingComplete()
+                    },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(16.dp)
+                ) {
+                    Text("Skip", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Navigation Buttons
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                if (currentStep < 3) {
-                    TextButton(onClick = { 
-                        viewModel.completeOnboarding()
-                        onOnboardingComplete() 
-                    }) {
-                        Text("Skip", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.weight(1f))
+
+                when (currentStep) {
+                    0 -> TutorialSlide(
+                        title = "Organize Your Life",
+                        description = "Add daily and weekly tasks to keep track of your goals. Set priorities and categories to stay focused.",
+                        icon = Icons.Default.Check // Placeholder icon
+                    )
+                    1 -> TutorialSlide(
+                        title = "Track Your Progress",
+                        description = "Mark tasks as done and watch your streak grow. See your weekly progress at a glance.",
+                        icon = Icons.Default.Check // Placeholder
+                    )
+                    2 -> TutorialSlide(
+                        title = "Gain Insights",
+                        description = "View detailed analytics about your productivity. Discover your best days and areas for improvement.",
+                        icon = Icons.Default.Check // Placeholder
+                    )
+                    3 -> NameInputSlide(
+                        name = name,
+                        onNameChange = { name = it }
+                    )
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                // Navigation Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Back Button
+                    if (currentStep > 0) {
+                        TextButton(onClick = { currentStep-- }) {
+                            Text("Back", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.width(64.dp)) // Placeholder
                     }
 
-                    // Page Indicators
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        repeat(3) { index ->
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        if (currentStep == index) MaterialTheme.colorScheme.primary 
-                                        else MaterialTheme.colorScheme.surfaceVariant
-                                    )
-                            )
+                    // Page Indicators (Only for tutorial steps)
+                    if (currentStep < 3) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            repeat(3) { index ->
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            if (currentStep == index) MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.surfaceVariant
+                                        )
+                                )
+                            }
                         }
                     }
 
-                    Button(onClick = { currentStep++ }) {
-                        Text("Next")
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
-                    }
-                } else {
-                    // Final Step (Name)
-                    Spacer(modifier = Modifier.width(1.dp)) // Spacer to push button to right if needed, or just center
+                    // Next / Get Started Button
                     Button(
                         onClick = {
-                            viewModel.saveUserName(name.ifBlank { "User" })
-                            viewModel.completeOnboarding()
-                            onOnboardingComplete()
+                            if (currentStep < 3) {
+                                currentStep++
+                            } else {
+                                viewModel.saveUserName(name.ifBlank { "User" })
+                                viewModel.completeOnboarding()
+                                onOnboardingComplete()
+                            }
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        enabled = if (currentStep == 3) name.isNotBlank() else true
                     ) {
-                        Text("Get Started")
+                        Text(if (currentStep == 3) "Get Started" else "Next")
+                        if (currentStep < 3) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
+                        }
                     }
                 }
             }

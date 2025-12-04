@@ -4,23 +4,25 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import java.util.UUID
 
+import com.google.gson.annotations.SerializedName
+
 @Entity(tableName = "tasks")
 data class Task(
-    @PrimaryKey val id: String = UUID.randomUUID().toString(),
-    val title: String,
-    val notes: String? = null,
-    val category: String = "General",
-    val priority: String = "Medium", // "High", "Medium", "Low"
-    val isCompleted: Boolean = false,
+    @PrimaryKey @SerializedName("id") val id: String = UUID.randomUUID().toString(),
+    @SerializedName("title") val title: String,
+    @SerializedName("notes") val notes: String? = null,
+    @SerializedName("category") val category: String = "General",
+    @SerializedName("priority") val priority: String = "Medium", // "High", "Medium", "Low"
+    @SerializedName("isCompleted") val isCompleted: Boolean = false,
 
     // Scheduling & Recurrence
-    val createdForDate: String, // YYYY-MM-DD (The date this task belongs to)
-    val time: String? = null, // HH:mm (Optional time)
-    val repeat: String = "None", // "None", "Daily", "Weekly"
-    val repeatDayOfWeek: String? = null, // "Monday", "Tuesday" etc. (For Weekly repeat)
-    val parentId: String? = null, // ID of the parent repeating task if this is an instance
+    @SerializedName("createdForDate") val createdForDate: String, // YYYY-MM-DD (The date this task belongs to)
+    @SerializedName("time") val time: String? = null, // HH:mm (Optional time)
+    @SerializedName("repeat") val repeat: String = "None", // "None", "Daily", "Weekly"
+    @SerializedName("repeatDayOfWeek") val repeatDayOfWeek: String? = null, // "Monday", "Tuesday" etc. (For Weekly repeat)
+    @SerializedName("parentId") val parentId: String? = null, // ID of the parent repeating task if this is an instance
 
     // Timestamps
-    val createdAt: Long = System.currentTimeMillis(),
-    val completedAt: Long? = null
+    @SerializedName("createdAt") val createdAt: Long = System.currentTimeMillis(),
+    @SerializedName("completedAt") val completedAt: Long? = null
 )

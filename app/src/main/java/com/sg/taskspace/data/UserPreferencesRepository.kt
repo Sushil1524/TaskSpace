@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.io.IOException
+import com.google.gson.annotations.SerializedName
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "user_preferences")
 
@@ -62,6 +63,6 @@ class UserPreferencesRepository(private val context: Context) {
 }
 
 data class UserPreferences(
-    val userName: String,
-    val isOnboardingCompleted: Boolean
+    @SerializedName("userName") val userName: String,
+    @SerializedName("isOnboardingCompleted") val isOnboardingCompleted: Boolean
 )

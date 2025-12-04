@@ -9,9 +9,11 @@ import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
+import com.google.gson.annotations.SerializedName
+
 data class BackupData(
-    val tasks: List<Task>,
-    val userPreferences: UserPreferences
+    @SerializedName("tasks") val tasks: List<Task>,
+    @SerializedName("userPreferences") val userPreferences: UserPreferences
 )
 
 class DataTransferManager(
