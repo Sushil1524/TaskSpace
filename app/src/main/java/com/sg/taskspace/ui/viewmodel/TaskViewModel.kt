@@ -15,7 +15,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -41,22 +40,7 @@ class TaskViewModel(private val taskRepository: TaskRepository) : ViewModel() {
         )
 
     // Motivation Logic
-    val motivationText: StateFlow<String> = homeTasks.map { tasks ->
-        if (tasks.isEmpty()) {
-            "No tasks for today. Add some to get started!"
-        } else {
-            val completed = tasks.count { it.isCompleted }
-            when (completed) {
-                0 -> "Let's get started! You have ${tasks.size} tasks today."
-                tasks.size -> "All done! Great job today! \uD83C\uDF89" // Party popper
-                else -> "Keep going! $completed of ${tasks.size} completed."
-            }
-        }
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = "Loading..."
-    )
+    // Motivation Logic (Moved to UI)
 
     // Weekly Progress (Placeholder for now, or simple implementation)
     // We need a list of days (Mon-Sun) and their completion status
@@ -68,25 +52,42 @@ class TaskViewModel(private val taskRepository: TaskRepository) : ViewModel() {
     val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
 
     // Update homeTasks to observe selectedDate
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val currentDisplayTasks: StateFlow<List<Task>> = _selectedDate.flatMapLatest { date ->
-        val dateIso = date.format(DateTimeFormatter.ISO_DATE)
-        val dayName = date.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }
-        taskRepository.getTasksForDate(dateIso, dayName)
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = emptyList()
-    )
+    // currentDisplayTasks moved to below to use new logic
 
     fun selectDate(date: LocalDate) {
         _selectedDate.value = date
     }
 
     // Categories
-    val categories = listOf("General", "Study", "Personal", "Work")
+    // Categories (Defined in UI/Bottom Sheet)
 
     data class DayStats(val date: LocalDate, val totalTasks: Int, val completedTasks: Int)
+
+    // Helper to filter tasks for a specific day, handling repeating task exceptions
+    private fun getTasksForDay(
+        date: LocalDate,
+        rangeTasks: List<Task>,
+        repeatingTasks: List<Task>
+    ): List<Task> {
+        val dateIso = date.format(DateTimeFormatter.ISO_DATE)
+        val dayName = date.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }
+
+        // 1. Get all specific tasks for this day (including completed instances of repeating tasks)
+        val specificTasks = rangeTasks.filter { it.createdForDate == dateIso }
+
+        // 2. Get relevant repeating tasks
+        val relevantRepeating = repeatingTasks.filter {
+            it.repeat == "Daily" || (it.repeat == "Weekly" && it.repeatDayOfWeek == dayName)
+        }
+
+        // 3. Filter out repeating tasks that have a completion instance (child) in specificTasks
+        val effectiveRepeating = relevantRepeating.filter { repeating ->
+            specificTasks.none { specific -> specific.parentId == repeating.id }
+        }
+
+        // 4. Combine
+        return specificTasks + effectiveRepeating
+    }
 
     // Weekly Stats Logic
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -104,13 +105,7 @@ class TaskViewModel(private val taskRepository: TaskRepository) : ViewModel() {
             val stats = mutableListOf<DayStats>()
             for (i in 0 until 7) {
                 val currentDate = startOfWeek.plusDays(i.toLong())
-                val dateIso = currentDate.format(DateTimeFormatter.ISO_DATE)
-                val dayName = currentDate.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }
-
-                val dailyTasks = rangeTasks.filter { it.createdForDate == dateIso } +
-                        repeatingTasks.filter { 
-                            it.repeat == "Daily" || (it.repeat == "Weekly" && it.repeatDayOfWeek == dayName)
-                        }
+                val dailyTasks = getTasksForDay(currentDate, rangeTasks, repeatingTasks)
                 
                 stats.add(DayStats(
                     date = currentDate,
@@ -139,8 +134,36 @@ class TaskViewModel(private val taskRepository: TaskRepository) : ViewModel() {
             taskRepository.getTasksForDateRange(startIso, endIso),
             taskRepository.getRepeatingTasks()
         ) { rangeTasks, repeatingTasks ->
-             // Just return all unique tasks relevant to this week
+             // Return all tasks for the week, but we need to be careful about duplicates if we just list them.
+             // For the "Weekly Planning" view, we probably want to see the *definitions* or the *instances*.
+             // If we use this for the "Day Details Dialog", we should use getTasksForDay logic.
+             // Let's keep this simple for now and let the UI filter or use a better structure.
+             // Actually, let's just return everything so the UI can decide.
              (rangeTasks + repeatingTasks).distinctBy { it.id }
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    // Update currentDisplayTasks to use the new logic
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val currentDisplayTasks: StateFlow<List<Task>> = _selectedDate.flatMapLatest { date ->
+        val dateIso = date.format(DateTimeFormatter.ISO_DATE)
+        
+        // We need to fetch range tasks for just this day to be efficient, 
+        // but our Repo only has getTasksForDateRange or getTasksForDate.
+        // getTasksForDate in Dao includes repeating logic in SQL, which is now insufficient because of the parentId check.
+        // So we should fetch "specific tasks" for today and "repeating tasks" and merge them in Kotlin.
+        
+        kotlinx.coroutines.flow.combine(
+            taskRepository.getTasksForDate(dateIso, ""), // We can use this but ignore its repeating logic? No, it returns mixed.
+            // Let's use getTasksForDateRange for just today.
+            taskRepository.getTasksForDateRange(dateIso, dateIso),
+            taskRepository.getRepeatingTasks()
+        ) { _, rangeTasks, repeatingTasks -> // Ignore the first one
+            getTasksForDay(date, rangeTasks, repeatingTasks)
         }
     }.stateIn(
         scope = viewModelScope,
@@ -164,7 +187,26 @@ class TaskViewModel(private val taskRepository: TaskRepository) : ViewModel() {
     
     fun toggleTaskCompletion(task: Task) {
         viewModelScope.launch {
-            taskRepository.updateTask(task.copy(isCompleted = !task.isCompleted))
+            if (task.repeat != "None") {
+                // It's a repeating task (Template). User wants to complete it for TODAY.
+                // Create a new instance for today that is completed.
+                val todayIso = _selectedDate.value.format(DateTimeFormatter.ISO_DATE)
+                val completedInstance = task.copy(
+                    id = java.util.UUID.randomUUID().toString(),
+                    createdForDate = todayIso,
+                    isCompleted = true,
+                    repeat = "None",
+                    parentId = task.id
+                )
+                taskRepository.insertTask(completedInstance)
+            } else if (task.parentId != null && task.isCompleted) {
+                // It's a completed instance of a repeating task. User is un-checking it.
+                // We should delete this instance so the original repeating task shows up again.
+                taskRepository.deleteTask(task)
+            } else {
+                // Normal task or disconnected instance
+                taskRepository.updateTask(task.copy(isCompleted = !task.isCompleted))
+            }
         }
     }
     

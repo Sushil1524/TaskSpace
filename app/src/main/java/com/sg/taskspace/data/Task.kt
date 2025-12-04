@@ -18,6 +18,7 @@ data class Task(
     val time: String? = null, // HH:mm (Optional time)
     val repeat: String = "None", // "None", "Daily", "Weekly"
     val repeatDayOfWeek: String? = null, // "Monday", "Tuesday" etc. (For Weekly repeat)
+    val parentId: String? = null, // ID of the parent repeating task if this is an instance
 
     // Timestamps
     val createdAt: Long = System.currentTimeMillis(),

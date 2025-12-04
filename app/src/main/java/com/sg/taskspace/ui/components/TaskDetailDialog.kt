@@ -48,7 +48,6 @@ fun TaskDetailDialog(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = 600.dp)
                 .padding(16.dp),
             shape = MaterialTheme.shapes.large,
             colors = CardDefaults.cardColors(
@@ -56,9 +55,7 @@ fun TaskDetailDialog(
             )
         ) {
             Column(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .verticalScroll(rememberScrollState())
+                modifier = Modifier.padding(16.dp)
             ) {
                 // Header Row
                 Row(
@@ -79,46 +76,53 @@ fun TaskDetailDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 if (isEditing) {
-                    // Edit Mode
-                    OutlinedTextField(
-                        value = editedTitle,
-                        onValueChange = { editedTitle = it },
-                        label = { Text("Title") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = editedNotes,
-                        onValueChange = { editedNotes = it },
-                        label = { Text("Notes") },
-                        modifier = Modifier.fillMaxWidth(),
-                        minLines = 3
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    // Priority
-                    Text("Priority", style = MaterialTheme.typography.labelMedium)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("High", "Medium", "Low").forEach { p ->
-                            FilterChip(
-                                selected = editedPriority == p,
-                                onClick = { editedPriority = p },
-                                label = { Text(p) }
-                            )
+                    // Edit Mode - Use Column with vertical scroll only if needed
+                    Column(
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        OutlinedTextField(
+                            value = editedTitle,
+                            onValueChange = { editedTitle = it },
+                            label = { Text("Title") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = editedNotes,
+                            onValueChange = { editedNotes = it },
+                            label = { Text("Notes") },
+                            modifier = Modifier.fillMaxWidth(),
+                            minLines = 3,
+                            maxLines = 5
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Priority
+                        Text("Priority", style = MaterialTheme.typography.labelMedium)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf("High", "Medium", "Low").forEach { p ->
+                                FilterChip(
+                                    selected = editedPriority == p,
+                                    onClick = { editedPriority = p },
+                                    label = { Text(p) }
+                                )
+                            }
                         }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                    // Category
-                    Text("Category", style = MaterialTheme.typography.labelMedium)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("General", "Study", "Personal", "Work").forEach { c ->
-                            FilterChip(
-                                selected = editedCategory == c,
-                                onClick = { editedCategory = c },
-                                label = { Text(c) }
-                            )
+                        // Category
+                        Text("Category", style = MaterialTheme.typography.labelMedium)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf("General", "Study", "Personal", "Work").forEach { c ->
+                                FilterChip(
+                                    selected = editedCategory == c,
+                                    onClick = { editedCategory = c },
+                                    label = { Text(c) }
+                                )
+                            }
                         }
                     }
 
@@ -150,85 +154,91 @@ fun TaskDetailDialog(
 
                 } else {
                     // View Mode
-                    Text(
-                        text = task.title,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        AssistChip(
-                            onClick = { },
-                            label = { Text(task.priority) },
-                            colors = AssistChipDefaults.assistChipColors(
-                                containerColor = when(task.priority) {
-                                    "High" -> MaterialTheme.colorScheme.errorContainer
-                                    "Medium" -> MaterialTheme.colorScheme.tertiaryContainer
-                                    else -> MaterialTheme.colorScheme.secondaryContainer
-                                }
-                            )
+                    Column(
+                         modifier = Modifier
+                            .weight(1f, fill = false)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        Text(
+                            text = task.title,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        AssistChip(
-                            onClick = { },
-                            label = { Text(task.category) }
-                        )
-                    }
-
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
-
-                    Text(
-                        text = "Notes",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    if (!task.notes.isNullOrBlank()) {
-                        val notesText = task.notes
                         
-                        // Copy Button
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .clickable {
-                                    val clip = ClipData.newPlainText("Task Notes", notesText)
-                                    clipboardManager.setPrimaryClip(clip)
-                                    Toast.makeText(context, "Notes copied to clipboard", Toast.LENGTH_SHORT).show()
-                                }
-                                .padding(4.dp)
-                        ) {
-                            Icon(Icons.Default.ContentCopy, contentDescription = "Copy", modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Copy Notes", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            AssistChip(
+                                onClick = { },
+                                label = { Text(task.priority) },
+                                colors = AssistChipDefaults.assistChipColors(
+                                    containerColor = when(task.priority) {
+                                        "High" -> MaterialTheme.colorScheme.errorContainer
+                                        "Medium" -> MaterialTheme.colorScheme.tertiaryContainer
+                                        else -> MaterialTheme.colorScheme.secondaryContainer
+                                    }
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            AssistChip(
+                                onClick = { },
+                                label = { Text(task.category) }
+                            )
                         }
 
-                        // Linkify Logic
-                        val annotatedString = buildAnnotatedString {
-                            append(notesText)
-                            val urlRegex = "(https?://\\S+)".toRegex()
-                            urlRegex.findAll(notesText).forEach { matchResult ->
-                                val link = androidx.compose.ui.text.LinkAnnotation.Url(
-                                    url = matchResult.value,
-                                    styles = androidx.compose.ui.text.TextLinkStyles(
-                                        style = SpanStyle(
-                                            color = MaterialTheme.colorScheme.primary,
-                                            textDecoration = TextDecoration.Underline
-                                        )
-                                    )
-                                )
-                                addLink(link, matchResult.range.first, matchResult.range.last + 1)
-                            }
-                        }
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
                         Text(
-                            text = annotatedString,
-                            style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface)
+                            text = "Notes",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
                         )
-                    } else {
-                        Text("No notes added.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        if (!task.notes.isNullOrBlank()) {
+                            val notesText = task.notes
+                            
+                            // Copy Button
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .clickable {
+                                        val clip = ClipData.newPlainText("Task Notes", notesText)
+                                        clipboardManager.setPrimaryClip(clip)
+                                        Toast.makeText(context, "Notes copied to clipboard", Toast.LENGTH_SHORT).show()
+                                    }
+                                    .padding(4.dp)
+                            ) {
+                                Icon(Icons.Default.ContentCopy, contentDescription = "Copy", modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Copy Notes", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                            }
+
+                            // Linkify Logic
+                            val annotatedString = buildAnnotatedString {
+                                append(notesText)
+                                val urlRegex = "(https?://\\S+)".toRegex()
+                                urlRegex.findAll(notesText).forEach { matchResult ->
+                                    val link = androidx.compose.ui.text.LinkAnnotation.Url(
+                                        url = matchResult.value,
+                                        styles = androidx.compose.ui.text.TextLinkStyles(
+                                            style = SpanStyle(
+                                                color = MaterialTheme.colorScheme.primary,
+                                                textDecoration = TextDecoration.Underline
+                                            )
+                                        )
+                                    )
+                                    addLink(link, matchResult.range.first, matchResult.range.last + 1)
+                                }
+                            }
+
+                            Text(
+                                text = annotatedString,
+                                style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface)
+                            )
+                        } else {
+                            Text("No notes added.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))

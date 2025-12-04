@@ -42,8 +42,7 @@ fun TaskSpaceNavGraph(
         composable("weekly_tasks") {
             WeeklyTasksScreen(
                 viewModel = viewModel,
-                onNavigateBack = { navController.popBackStack() },
-                onTaskClick = { taskId -> navController.navigate("task_detail/$taskId") }
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }

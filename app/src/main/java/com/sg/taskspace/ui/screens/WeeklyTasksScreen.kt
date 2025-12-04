@@ -5,12 +5,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.sg.taskspace.data.Task
 import com.sg.taskspace.ui.viewmodel.TaskViewModel
 import com.sg.taskspace.ui.components.TaskCard
 
@@ -18,23 +20,118 @@ import com.sg.taskspace.ui.components.TaskCard
 @Composable
 fun WeeklyTasksScreen(
     viewModel: TaskViewModel,
-    onNavigateBack: () -> Unit,
-    onTaskClick: (String) -> Unit
+    onNavigateBack: () -> Unit
 ) {
-    // We need a way to get tasks for the current week.
-    // Let's add a property to ViewModel for this.
-    val tasks by viewModel.weeklyTasks.collectAsState()
+    val weeklyTasks by viewModel.weeklyTasks.collectAsState()
+    val selectedDate by viewModel.selectedDate.collectAsState()
+    
+    // Local state for the selected day in this view (default to current selectedDate from VM)
+    var currentTabDate by remember { mutableStateOf(selectedDate) }
+    
+    // Update currentTabDate if VM selectedDate changes (optional, but good for sync)
+    LaunchedEffect(selectedDate) {
+        currentTabDate = selectedDate
+    }
+
+    var showBottomSheet by remember { mutableStateOf(false) }
+    var taskToEdit by remember { mutableStateOf<Task?>(null) }
+
+    // Calculate start of week
+    val currentDayOfWeek = currentTabDate.dayOfWeek.value
+    val startOfWeek = currentTabDate.minusDays((currentDayOfWeek - 1).toLong())
+    val weekDays = (0..6).map { startOfWeek.plusDays(it.toLong()) }
+
+    // Filter tasks for the selected tab date
+    val dateIso = currentTabDate.format(java.time.format.DateTimeFormatter.ISO_DATE)
+    val dayName = currentTabDate.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }
+    
+    val dayTasks = weeklyTasks.filter { task ->
+        val isSpecific = task.createdForDate == dateIso
+        val isRepeating = task.repeat == "Daily" || (task.repeat == "Weekly" && task.repeatDayOfWeek == dayName)
+        isSpecific || isRepeating
+    }.filter { task ->
+        if (task.repeat != "None") {
+            weeklyTasks.none { it.parentId == task.id && it.createdForDate == dateIso }
+        } else {
+            true
+        }
+    }
+
+    if (showBottomSheet) {
+        com.sg.taskspace.ui.components.AddTaskBottomSheet(
+            onDismissRequest = { showBottomSheet = false },
+            onSaveTask = { title, notes, priority, category, repeat ->
+                // Add task for the SELECTED tab date
+                // We need to temporarily select that date in VM or pass it?
+                // VM's addTask uses _selectedDate.value.
+                // So we should update VM's selected date to match our tab before adding, OR update addTask to accept date.
+                // For now, let's update VM selected date when tab changes, so they are in sync.
+                viewModel.selectDate(currentTabDate) 
+                viewModel.addTask(title, notes, priority, category, repeat)
+                showBottomSheet = false
+            }
+        )
+    }
+    
+    if (taskToEdit != null) {
+        com.sg.taskspace.ui.components.TaskDetailDialog(
+            task = taskToEdit!!,
+            onDismissRequest = { taskToEdit = null },
+            onUpdateTask = { updatedTask ->
+                viewModel.updateTaskDetails(updatedTask)
+                taskToEdit = null
+            },
+            onDeleteTask = { taskToDelete ->
+                viewModel.deleteTask(taskToDelete)
+                taskToEdit = null
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("This Week's Tasks") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            Column {
+                TopAppBar(
+                    title = { Text("Weekly Plan") },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    }
+                )
+                // Day Tabs
+                PrimaryScrollableTabRow(
+                    selectedTabIndex = weekDays.indexOf(currentTabDate),
+                    edgePadding = 16.dp,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.primary
+                ) {
+                    weekDays.forEach { date ->
+                        val isSelected = date == currentTabDate
+                        Tab(
+                            selected = isSelected,
+                            onClick = { 
+                                currentTabDate = date 
+                                viewModel.selectDate(date) // Sync with VM
+                            },
+                            text = { 
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.getDefault()))
+                                    Text(date.dayOfMonth.toString(), style = MaterialTheme.typography.bodySmall)
+                                }
+                            }
+                        )
                     }
                 }
-            )
+            }
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showBottomSheet = true },
+                containerColor = MaterialTheme.colorScheme.primary
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add Task")
+            }
         }
     ) { innerPadding ->
         LazyColumn(
@@ -42,18 +139,28 @@ fun WeeklyTasksScreen(
                 .padding(innerPadding)
                 .fillMaxSize()
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp)
         ) {
-            if (tasks.isEmpty()) {
+            if (dayTasks.isEmpty()) {
                 item {
-                    Text("No tasks for this week.", modifier = Modifier.padding(16.dp))
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "No tasks for ${currentTabDate.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }}",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             } else {
-                items(tasks) { task ->
+                items(dayTasks) { task ->
                     TaskCard(
                         task = task,
                         onCheckedChange = { viewModel.toggleTaskCompletion(task) },
-                        onClick = { onTaskClick(task.id) },
+                        onClick = { taskToEdit = task },
                         onDelete = { viewModel.deleteTask(task) }
                     )
                 }

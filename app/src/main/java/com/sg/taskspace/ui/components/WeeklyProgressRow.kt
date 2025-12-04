@@ -1,6 +1,7 @@
 package com.sg.taskspace.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,50 +13,88 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
 
+import com.sg.taskspace.ui.viewmodel.TaskViewModel
+
 @Composable
 fun WeeklyProgressRow(
     selectedDate: LocalDate,
-    onDateSelected: (LocalDate) -> Unit
+    weeklyStats: List<TaskViewModel.DayStats>,
+    onDateSelected: (LocalDate) -> Unit,
+    onDayClick: (LocalDate) -> Unit
 ) {
-    // Calculate start of week (Monday) based on selectedDate or current date
-    // For simplicity, let's just show the current week of the *selected* date
-    val currentDayOfWeek = selectedDate.dayOfWeek.value // 1 (Mon) - 7 (Sun)
-    val startOfWeek = selectedDate.minusDays((currentDayOfWeek - 1).toLong())
-
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        for (i in 0 until 7) {
-            val date = startOfWeek.plusDays(i.toLong())
-            val isSelected = date == selectedDate
-            val dayName = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()).take(1)
+        // Use passed stats or generate empty ones if loading/empty
+        val displayStats = weeklyStats.ifEmpty {
+            val current = LocalDate.now()
+            val start = current.minusDays((current.dayOfWeek.value - 1).toLong())
+            (0..6).map {
+                TaskViewModel.DayStats(start.plusDays(it.toLong()), 0, 0)
+            }
+        }
+
+        displayStats.forEach { stat ->
+            val isSelected = stat.date == selectedDate
+            val dayName = stat.date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()).take(3).uppercase()
             
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(
-                        if (isSelected) MaterialTheme.colorScheme.primary 
-                        else MaterialTheme.colorScheme.surfaceVariant
+                    .width(48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .border(
+                        width = if (isSelected) 1.dp else 0.dp,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent,
+                        shape = RoundedCornerShape(12.dp)
                     )
-                    .clickable { onDateSelected(date) }
-                    .padding(vertical = 8.dp, horizontal = 12.dp)
+                    .clickable { 
+                        onDateSelected(stat.date)
+                        onDayClick(stat.date)
+                    }
+                    .padding(vertical = 12.dp)
             ) {
                 Text(
                     text = dayName,
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = date.dayOfMonth.toString(),
-                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Bold,
-                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                    fontSize = 10.sp
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stat.date.dayOfMonth.toString(),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                // Task Count 0/0
+                Text(
+                    text = "${stat.completedTasks}/${stat.totalTasks}",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontSize = 10.sp,
+                    color = if (stat.totalTasks > 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                )
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                // Indicator dot/dash
+                Box(
+                    modifier = Modifier
+                        .width(12.dp)
+                        .height(2.dp)
+                        .background(
+                            if (stat.totalTasks > 0) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent, 
+                            RoundedCornerShape(1.dp)
+                        )
                 )
             }
         }

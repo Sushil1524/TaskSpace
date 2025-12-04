@@ -1,9 +1,7 @@
 package com.sg.taskspace.ui.screens
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -30,16 +28,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sg.taskspace.data.Task
 import com.sg.taskspace.ui.components.TaskCard
+import com.sg.taskspace.ui.components.WeeklyProgressRow
 import com.sg.taskspace.ui.viewmodel.TaskViewModel
 import java.time.LocalDate
-import java.util.Locale
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -83,11 +80,18 @@ fun HomeScreen(
         val dayName = date.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }
         
         // Filter tasks for this day from weeklyTasks
-        // Note: This logic duplicates VM logic slightly but is fast for UI
+        // Updated logic to handle repeating tasks and their completed instances
         val dayTasks = weeklyTasks.filter { task ->
-            task.createdForDate == dateIso || 
-            task.repeat == "Daily" || 
-            (task.repeat == "Weekly" && task.repeatDayOfWeek == dayName)
+            val isSpecific = task.createdForDate == dateIso
+            val isRepeating = task.repeat == "Daily" || (task.repeat == "Weekly" && task.repeatDayOfWeek == dayName)
+            isSpecific || isRepeating
+        }.filter { task ->
+            // If it's a repeating task, keep it ONLY if there is NO specific task (exception) for this day that points to it
+            if (task.repeat != "None") {
+                weeklyTasks.none { it.parentId == task.id && it.createdForDate == dateIso }
+            } else {
+                true
+            }
         }
         
         val stats = weeklyStats.find { it.date == date }
@@ -115,6 +119,35 @@ fun HomeScreen(
     }
 
     Scaffold(
+        topBar = {
+            Surface(
+                color = MaterialTheme.colorScheme.background,
+                shadowElevation = 4.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .statusBarsPadding(), // Handle status bar overlap
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "TaskSpace",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Icon(Icons.Default.History, contentDescription = "History", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(Icons.Default.EmojiEvents, contentDescription = "Trophies", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(Icons.Default.BarChart, contentDescription = "Analytics", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(Icons.Default.CalendarMonth, contentDescription = "Calendar", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showBottomSheet = true },
@@ -134,35 +167,12 @@ fun HomeScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            // 1. Header
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp, bottom = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Task Historian",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Icon(Icons.Default.History, contentDescription = "History", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Icon(Icons.Default.EmojiEvents, contentDescription = "Trophies", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Icon(Icons.Default.BarChart, contentDescription = "Analytics", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Icon(Icons.Default.CalendarMonth, contentDescription = "Calendar", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
+            // 1. Header (Removed from here, moved to topBar)
 
             // 2. Date & Week
             item {
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
@@ -195,21 +205,28 @@ fun HomeScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "GOOD AFTERNOON",
+                                text = "DAILY PROGRESS",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 letterSpacing = 1.sp
                             )
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.TrendingUp, // Placeholder for graph icon
+                                imageVector = Icons.AutoMirrored.Filled.TrendingUp,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         }
                         
                         Spacer(modifier = Modifier.height(8.dp))
+                        
+                        val total = tasks.size
+                        val done = tasks.count { it.isCompleted }
+                        val motivation = if (total == 0) "No tasks yet. Add one!" 
+                                         else if (done == total) "All tasks completed! Great job!"
+                                         else "You've completed $done out of $total tasks."
+
                         Text(
-                            text = "Ready to plan your day?",
+                            text = motivation,
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -221,8 +238,6 @@ fun HomeScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            val total = tasks.size
-                            val done = tasks.count { it.isCompleted }
                             val progress = if (total > 0) (done.toFloat() / total * 100).toInt() else 0
                             
                             StatColumn("Total", total.toString())
@@ -232,8 +247,6 @@ fun HomeScreen(
                         
                         Spacer(modifier = Modifier.height(16.dp))
                         // Progress Bar
-                        val total = tasks.size
-                        val done = tasks.count { it.isCompleted }
                         val progressFraction = if (total > 0) done.toFloat() / total else 0f
                         LinearProgressIndicator(
                             progress = { progressFraction },
@@ -245,36 +258,7 @@ fun HomeScreen(
                 }
             }
 
-            // 3.5 Level/XP Card (New)
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Level 1",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = "0 XP",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
+            // 3.5 Level/XP Card (Removed)
 
             // 4. Weekly Progress
             item {
@@ -429,74 +413,6 @@ private fun StatColumn(label: String, value: String) {
     }
 }
 
-@Composable
-fun WeeklyProgressRow(
-    selectedDate: LocalDate,
-    weeklyStats: List<TaskViewModel.DayStats>,
-    onDateSelected: (LocalDate) -> Unit,
-    onDayClick: (LocalDate) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        val displayStats = weeklyStats.ifEmpty {
-            val current = LocalDate.now()
-            val start = current.minusDays((current.dayOfWeek.value - 1).toLong())
-            (0..6).map {
-                TaskViewModel.DayStats(start.plusDays(it.toLong()), 0, 0)
-            }
-        }
 
-        displayStats.forEach { stat ->
-            val isSelected = stat.date == selectedDate
-            val dayName = stat.date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, Locale.getDefault()).take(3).uppercase()
-            
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .width(48.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant) // Always dark background
-                    .border(
-                        width = if (isSelected) 1.dp else 0.dp,
-                        color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    .clickable { 
-                        onDateSelected(stat.date)
-                        onDayClick(stat.date)
-                    }
-                    .padding(vertical = 12.dp)
-            ) {
-                Text(
-                    text = dayName,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 10.sp
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = stat.date.dayOfMonth.toString(),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                // Indicator dot/dash
-                Box(
-                    modifier = Modifier
-                        .width(12.dp)
-                        .height(2.dp)
-                        .background(
-                            if (stat.totalTasks > 0) MaterialTheme.colorScheme.onSurfaceVariant else Color.Transparent, 
-                            RoundedCornerShape(1.dp)
-                        )
-                )
-            }
-        }
-    }
-}
 
 
