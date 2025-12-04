@@ -284,69 +284,69 @@ fun HomeScreen(
                     )
                 }
             }
-
-            // 4.5 Weekly Reflection Card (New)
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Book, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Weekly Reflection",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        // Editable Reflection Input
-                        val reflectionText by viewModel.reflectionText.collectAsState()
-                        
-                        OutlinedTextField(
-                            value = reflectionText,
-                            onValueChange = { viewModel.updateReflectionText(it) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(120.dp),
-                            placeholder = { 
-                                Text(
-                                    text = "What went well this week? What can be improved?",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                                ) 
-                            },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
-                                focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
-                                unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent
-                            ),
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Button(
-                            onClick = { /* TODO: Save Reflection */ },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                        ) {
-                            Icon(Icons.Default.Save, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Save Notes")
-                        }
-                    }
-                }
-            }
+//
+//            // 4.5 Weekly Reflection Card (New)
+//            item {
+//                Card(
+//                    modifier = Modifier.fillMaxWidth(),
+//                    colors = CardDefaults.cardColors(
+//                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+//                    ),
+//                    shape = RoundedCornerShape(16.dp),
+//                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
+//                ) {
+//                    Column(modifier = Modifier.padding(16.dp)) {
+//                        Row(verticalAlignment = Alignment.CenterVertically) {
+//                            Icon(Icons.Default.Book, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+//                            Spacer(modifier = Modifier.width(8.dp))
+//                            Text(
+//                                text = "Weekly Reflection",
+//                                style = MaterialTheme.typography.titleMedium,
+//                                fontWeight = FontWeight.Bold,
+//                                color = MaterialTheme.colorScheme.onSurface
+//                            )
+//                        }
+//                        Spacer(modifier = Modifier.height(16.dp))
+//
+//                        // Editable Reflection Input
+//                        val reflectionText by viewModel.reflectionText.collectAsState()
+//
+//                        OutlinedTextField(
+//                            value = reflectionText,
+//                            onValueChange = { viewModel.updateReflectionText(it) },
+//                            modifier = Modifier
+//                                .fillMaxWidth()
+//                                .height(120.dp),
+//                            placeholder = {
+//                                Text(
+//                                    text = "What went well this week? What can be improved?",
+//                                    style = MaterialTheme.typography.bodyMedium,
+//                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+//                                )
+//                            },
+//                            colors = OutlinedTextFieldDefaults.colors(
+//                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+//                                unfocusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
+//                                focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+//                                unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent
+//                            ),
+//                            shape = RoundedCornerShape(8.dp)
+//                        )
+//
+//                        Spacer(modifier = Modifier.height(16.dp))
+//
+//                        Button(
+//                            onClick = { /* TODO: Save Reflection */ },
+//                            modifier = Modifier.fillMaxWidth(),
+//                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+//                        ) {
+//                            Icon(Icons.Default.Save, contentDescription = null)
+//                            Spacer(modifier = Modifier.width(8.dp))
+//                            Text("Save Notes")
+//                        }
+//                    }
+//                }
+//            }
 
             // 4.6 Set Up Weekly Plan Button (New)
             item {
