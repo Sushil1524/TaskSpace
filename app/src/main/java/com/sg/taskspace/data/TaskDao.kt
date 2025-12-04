@@ -19,11 +19,11 @@ interface TaskDao {
         WHERE createdForDate = :date 
         OR repeat = 'Daily' 
         OR (repeat = 'Weekly' AND repeatDayOfWeek = :dayOfWeek)
-        ORDER BY 
-        CASE priority
-            WHEN 'High' THEN 1
-            WHEN 'Medium' THEN 2
-            WHEN 'Low' THEN 3
+        ORDER BY  
+        CASE LOWER(priority)
+            WHEN 'high' THEN 1
+            WHEN 'medium' THEN 2
+            WHEN 'low' THEN 3
             ELSE 4
         END
     """)

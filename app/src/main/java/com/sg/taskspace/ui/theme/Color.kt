@@ -11,10 +11,10 @@ val PurpleGrey40 = Color(0xFF625b71)
 val Pink40 = Color(0xFF7D5260)
 
 // Custom Dark Theme Colors
-val DarkBackground = Color(0xFF121212)
-val DarkSurface = Color(0xFF1E1E1E)
-val PrimaryPurple = Color(0xFFBB86FC)
+val DarkBackground = Color(0xFF000000) // True Black
+val DarkSurface = Color(0xFF121212) // Very Dark Gray
+val PrimaryBlue = Color(0xFF90CAF9) // Soft Blue
 val SecondaryTeal = Color(0xFF03DAC6)
 val TextWhite = Color(0xFFFFFFFF)
 val TextGray = Color(0xFFB3B3B3)
-val CardBackground = Color(0xFF2C2C2C)
+val CardBackground = Color(0xFF1E1E1E) // Slightly lighter than surface

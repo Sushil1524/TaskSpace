@@ -1,5 +1,4 @@
 package com.sg.taskspace.ui.viewmodel
-
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -63,6 +62,14 @@ class TaskViewModel(private val taskRepository: TaskRepository) : ViewModel() {
 
     data class DayStats(val date: LocalDate, val totalTasks: Int, val completedTasks: Int)
 
+    // Reflection Text
+    private val _reflectionText = MutableStateFlow("")
+    val reflectionText: StateFlow<String> = _reflectionText.asStateFlow()
+
+    fun updateReflectionText(text: String) {
+        _reflectionText.value = text
+    }
+
     // Helper to filter tasks for a specific day, handling repeating task exceptions
     private fun getTasksForDay(
         date: LocalDate,
@@ -73,7 +80,8 @@ class TaskViewModel(private val taskRepository: TaskRepository) : ViewModel() {
         val dayName = date.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }
 
         // 1. Get all specific tasks for this day (including completed instances of repeating tasks)
-        val specificTasks = rangeTasks.filter { it.createdForDate == dateIso }
+        // CRITICAL FIX: Exclude repeating templates from here to avoid duplicates if they were created today.
+        val specificTasks = rangeTasks.filter { it.createdForDate == dateIso && it.repeat == "None" }
 
         // 2. Get relevant repeating tasks
         val relevantRepeating = repeatingTasks.filter {
@@ -92,8 +100,11 @@ class TaskViewModel(private val taskRepository: TaskRepository) : ViewModel() {
     // Weekly Stats Logic
     @OptIn(ExperimentalCoroutinesApi::class)
     val weeklyStats: StateFlow<List<DayStats>> = _selectedDate.flatMapLatest { date ->
-        val currentDayOfWeek = date.dayOfWeek.value
-        val startOfWeek = date.minusDays((currentDayOfWeek - 1).toLong())
+        // Week starts on Sunday
+        // Sunday = 7. 7 % 7 = 0. minusDays(0) -> Sunday.
+        // Monday = 1. 1 % 7 = 1. minusDays(1) -> Sunday.
+        val daysToSubtract = date.dayOfWeek.value % 7
+        val startOfWeek = date.minusDays(daysToSubtract.toLong())
         val endOfWeek = startOfWeek.plusDays(6)
         val startIso = startOfWeek.format(DateTimeFormatter.ISO_DATE)
         val endIso = endOfWeek.format(DateTimeFormatter.ISO_DATE)
@@ -124,8 +135,8 @@ class TaskViewModel(private val taskRepository: TaskRepository) : ViewModel() {
     // Weekly Tasks Logic (Updated to include repeating tasks)
     @OptIn(ExperimentalCoroutinesApi::class)
     val weeklyTasks: StateFlow<List<Task>> = _selectedDate.flatMapLatest { date ->
-        val currentDayOfWeek = date.dayOfWeek.value
-        val startOfWeek = date.minusDays((currentDayOfWeek - 1).toLong())
+        val daysToSubtract = date.dayOfWeek.value % 7
+        val startOfWeek = date.minusDays(daysToSubtract.toLong())
         val endOfWeek = startOfWeek.plusDays(6)
         val startIso = startOfWeek.format(DateTimeFormatter.ISO_DATE)
         val endIso = endOfWeek.format(DateTimeFormatter.ISO_DATE)
@@ -134,11 +145,6 @@ class TaskViewModel(private val taskRepository: TaskRepository) : ViewModel() {
             taskRepository.getTasksForDateRange(startIso, endIso),
             taskRepository.getRepeatingTasks()
         ) { rangeTasks, repeatingTasks ->
-             // Return all tasks for the week, but we need to be careful about duplicates if we just list them.
-             // For the "Weekly Planning" view, we probably want to see the *definitions* or the *instances*.
-             // If we use this for the "Day Details Dialog", we should use getTasksForDay logic.
-             // Let's keep this simple for now and let the UI filter or use a better structure.
-             // Actually, let's just return everything so the UI can decide.
              (rangeTasks + repeatingTasks).distinctBy { it.id }
         }
     }.stateIn(
@@ -171,14 +177,151 @@ class TaskViewModel(private val taskRepository: TaskRepository) : ViewModel() {
         initialValue = emptyList()
     )
 
-    fun addTask(title: String, notes: String, priority: String, category: String, repeat: String = "None") {
+    // History Stats Logic
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun getWeekStats(startOfWeek: LocalDate): Flow<List<DayStats>> {
+        val endOfWeek = startOfWeek.plusDays(6)
+        val startIso = startOfWeek.format(DateTimeFormatter.ISO_DATE)
+        val endIso = endOfWeek.format(DateTimeFormatter.ISO_DATE)
+
+        return kotlinx.coroutines.flow.combine(
+            taskRepository.getTasksForDateRange(startIso, endIso),
+            taskRepository.getRepeatingTasks()
+        ) { rangeTasks, repeatingTasks ->
+            val stats = mutableListOf<DayStats>()
+            for (i in 0 until 7) {
+                val currentDate = startOfWeek.plusDays(i.toLong())
+                val dailyTasks = getTasksForDay(currentDate, rangeTasks, repeatingTasks)
+                
+                stats.add(DayStats(
+                    date = currentDate,
+                    totalTasks = dailyTasks.size,
+                    completedTasks = dailyTasks.count { it.isCompleted }
+                ))
+            }
+            stats
+        }
+    }
+
+    // Insights Logic
+    data class InsightsData(
+        val totalTasksThisMonth: Int,
+        val completedTasksThisMonth: Int,
+        val completionRateThisMonth: Int,
+        val bestDayOfWeek: String,
+        val currentStreak: Int,
+        val categoryDistribution: Map<String, Int>,
+        val needsFocus: String
+    )
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun getInsightsData(yearMonth: java.time.YearMonth): Flow<InsightsData> {
+        val startOfMonth = yearMonth.atDay(1)
+        val endOfMonth = yearMonth.atEndOfMonth()
+        val startIso = startOfMonth.format(DateTimeFormatter.ISO_DATE)
+        val endIso = endOfMonth.format(DateTimeFormatter.ISO_DATE)
+
+        // For streak, we need to look back. Let's look back 365 days max for now.
+        val streakStart = LocalDate.now().minusDays(365)
+        val streakStartIso = streakStart.format(DateTimeFormatter.ISO_DATE)
+        val todayIso = LocalDate.now().format(DateTimeFormatter.ISO_DATE)
+
+        return kotlinx.coroutines.flow.combine(
+            taskRepository.getTasksForDateRange(startIso, endIso), // Month tasks
+            taskRepository.getTasksForDateRange(streakStartIso, todayIso), // Streak candidates (approx)
+            taskRepository.getRepeatingTasks()
+
+        ) { monthTasks, streakCandidateTasks, repeatingTasks ->
+            try {
+                // 1. Monthly Stats
+                // We need to expand repeating tasks for the month
+                val allMonthTasks = mutableListOf<Task>()
+                for (i in 0 until endOfMonth.dayOfMonth) {
+                    val date = startOfMonth.plusDays(i.toLong())
+                    allMonthTasks.addAll(getTasksForDay(date, monthTasks, repeatingTasks))
+                }
+                
+                val totalMonth = allMonthTasks.size
+                val completedMonth = allMonthTasks.count { it.isCompleted }
+                val rate = if (totalMonth > 0) (completedMonth.toFloat() / totalMonth * 100).toInt() else 0
+                
+                // 2. Best Day of Week (based on completion count in this month)
+                val bestDay = allMonthTasks.filter { it.isCompleted }
+                    .groupBy { 
+                        try {
+                            LocalDate.parse(it.createdForDate, DateTimeFormatter.ISO_DATE).dayOfWeek 
+                        } catch (e: Exception) {
+                            null
+                        }
+                    }
+                    .filterKeys { it != null }
+                    .maxByOrNull { it.value.size }?.key?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "N/A"
+
+                // 3. Category Distribution (This Month)
+                val categories = allMonthTasks.groupBy { it.category }.mapValues { it.value.size }
+
+                // 4. Current Streak
+                // Check backwards from yesterday/today
+                var streak = 0
+                var checkDate = LocalDate.now()
+                // If today has completed tasks, start counting from today. If not, check yesterday.
+                // Actually, streak usually implies consecutive days *ending* today or yesterday.
+                
+                // Helper to check if a day has completed tasks
+                fun hasCompletedTasks(date: LocalDate): Boolean {
+                    val tasks = getTasksForDay(date, streakCandidateTasks, repeatingTasks)
+                    return tasks.any { it.isCompleted }
+                }
+
+                if (hasCompletedTasks(checkDate)) {
+                    streak++
+                    checkDate = checkDate.minusDays(1)
+                } else {
+                     // If today has no completed tasks yet, streak might still be alive from yesterday
+                     checkDate = checkDate.minusDays(1)
+                }
+
+                while (hasCompletedTasks(checkDate)) {
+                    streak++
+                    checkDate = checkDate.minusDays(1)
+                    if (streak > 365) break // Safety break
+                }
+
+                // 5. Needs Focus
+                // Category with lowest completion rate (min 1 task)
+                val needsFocus = allMonthTasks.groupBy { it.category }
+                    .filter { it.value.isNotEmpty() }
+                    .minByOrNull { entry ->
+                        val total = entry.value.size
+                        val completed = entry.value.count { it.isCompleted }
+                        if (total > 0) completed.toFloat() / total else 1f // If 0 tasks, ignore (shouldn't happen due to filter)
+                    }?.key?.ifEmpty { "Uncategorized" } ?: "None"
+
+                InsightsData(
+                    totalTasksThisMonth = totalMonth,
+                    completedTasksThisMonth = completedMonth,
+                    completionRateThisMonth = rate,
+                    bestDayOfWeek = bestDay,
+                    currentStreak = streak,
+                    categoryDistribution = categories,
+                    needsFocus = needsFocus
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+                InsightsData(0, 0, 0, "Error", 0, emptyMap(), "Error")
+            }
+        }
+    }
+
+    fun addTask(title: String, notes: String, priority: String, category: String, repeat: String = "None", date: LocalDate? = null) {
         viewModelScope.launch {
+            val targetDate = date ?: _selectedDate.value
             val task = Task(
                 title = title,
                 notes = notes,
                 priority = priority,
                 category = category,
-                createdForDate = _selectedDate.value.format(DateTimeFormatter.ISO_DATE), // Add to selected date
+                createdForDate = targetDate.format(DateTimeFormatter.ISO_DATE),
                 repeat = repeat
             )
             taskRepository.insertTask(task)

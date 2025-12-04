@@ -26,20 +26,20 @@ fun WeeklyTasksScreen(
     val selectedDate by viewModel.selectedDate.collectAsState()
     
     // Local state for the selected day in this view (default to current selectedDate from VM)
+    // We initialize it once with the VM's date, but then it's independent.
     var currentTabDate by remember { mutableStateOf(selectedDate) }
     
-    // Update currentTabDate if VM selectedDate changes (optional, but good for sync)
-    LaunchedEffect(selectedDate) {
-        currentTabDate = selectedDate
-    }
+    // REMOVED: LaunchedEffect to sync back from VM. We want this screen to be independent navigation.
 
     var showBottomSheet by remember { mutableStateOf(false) }
     var taskToEdit by remember { mutableStateOf<Task?>(null) }
 
-    // Calculate start of week
-    val currentDayOfWeek = currentTabDate.dayOfWeek.value
-    val startOfWeek = currentTabDate.minusDays((currentDayOfWeek - 1).toLong())
-    val weekDays = (0..6).map { startOfWeek.plusDays(it.toLong()) }
+    // Calculate week days starting from SUNDAY
+    val weekDays = remember(currentTabDate) {
+        val daysToSubtract = currentTabDate.dayOfWeek.value % 7
+        val startOfWeek = currentTabDate.minusDays(daysToSubtract.toLong())
+        (0..6).map { startOfWeek.plusDays(it.toLong()) }
+    }
 
     // Filter tasks for the selected tab date
     val dateIso = currentTabDate.format(java.time.format.DateTimeFormatter.ISO_DATE)
@@ -62,12 +62,8 @@ fun WeeklyTasksScreen(
             onDismissRequest = { showBottomSheet = false },
             onSaveTask = { title, notes, priority, category, repeat ->
                 // Add task for the SELECTED tab date
-                // We need to temporarily select that date in VM or pass it?
-                // VM's addTask uses _selectedDate.value.
-                // So we should update VM's selected date to match our tab before adding, OR update addTask to accept date.
-                // For now, let's update VM selected date when tab changes, so they are in sync.
-                viewModel.selectDate(currentTabDate) 
-                viewModel.addTask(title, notes, priority, category, repeat)
+                // Now passing the date explicitly, so we don't need to change VM state.
+                viewModel.addTask(title, notes, priority, category, repeat, currentTabDate)
                 showBottomSheet = false
             }
         )
@@ -112,7 +108,7 @@ fun WeeklyTasksScreen(
                             selected = isSelected,
                             onClick = { 
                                 currentTabDate = date 
-                                viewModel.selectDate(date) // Sync with VM
+                                // REMOVED: viewModel.selectDate(date) - This fixes the bug!
                             },
                             text = { 
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {

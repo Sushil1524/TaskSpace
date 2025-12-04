@@ -1,7 +1,6 @@
 package com.sg.taskspace.ui.screens
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -43,7 +42,9 @@ import java.time.LocalDate
 @Composable
 fun HomeScreen(
     viewModel: TaskViewModel,
-    onWeeklyTasksClick: () -> Unit
+    onWeeklyTasksClick: () -> Unit,
+    onHistoryClick: () -> Unit,
+    onInsightsClick: () -> Unit
 ) {
     val tasks by viewModel.currentDisplayTasks.collectAsState()
     val formattedDate = viewModel.formattedDate
@@ -78,7 +79,7 @@ fun HomeScreen(
         val date = selectedDayForDialog!!
         val dateIso = date.format(java.time.format.DateTimeFormatter.ISO_DATE)
         val dayName = date.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }
-        
+
         // Filter tasks for this day from weeklyTasks
         // Updated logic to handle repeating tasks and their completed instances
         val dayTasks = weeklyTasks.filter { task ->
@@ -93,7 +94,7 @@ fun HomeScreen(
                 true
             }
         }
-        
+
         val stats = weeklyStats.find { it.date == date }
 
         com.sg.taskspace.ui.components.DayDetailsDialog(
@@ -107,7 +108,6 @@ fun HomeScreen(
             }
         )
     }
-
     if (showBottomSheet) {
         com.sg.taskspace.ui.components.AddTaskBottomSheet(
             onDismissRequest = { showBottomSheet = false },
@@ -138,10 +138,14 @@ fun HomeScreen(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Icon(Icons.Default.History, contentDescription = "History", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        IconButton(onClick = onHistoryClick) {
+                            Icon(Icons.Default.History, contentDescription = "History", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         Icon(Icons.Default.EmojiEvents, contentDescription = "Trophies", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Icon(Icons.Default.BarChart, contentDescription = "Analytics", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        IconButton(onClick = onInsightsClick) {
+                            Icon(Icons.Default.BarChart, contentDescription = "Analytics", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         Icon(Icons.Default.CalendarMonth, contentDescription = "Calendar", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         Icon(Icons.Default.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -273,7 +277,7 @@ fun HomeScreen(
                     WeeklyProgressRow(
                         selectedDate = selectedDate,
                         weeklyStats = weeklyStats,
-                        onDateSelected = { viewModel.selectDate(it) },
+                        onDateSelected = { /* Do nothing to main view */ },
                         onDayClick = { date -> selectedDayForDialog = date }
                     )
                 }
@@ -302,20 +306,30 @@ fun HomeScreen(
                         }
                         Spacer(modifier = Modifier.height(16.dp))
                         
-                        // Input Field Placeholder
-                        Box(
+                        // Editable Reflection Input
+                        val reflectionText by viewModel.reflectionText.collectAsState()
+                        
+                        OutlinedTextField(
+                            value = reflectionText,
+                            onValueChange = { viewModel.updateReflectionText(it) },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(100.dp)
-                                .border(1.dp, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
-                                .padding(16.dp)
-                        ) {
-                            Text(
-                                text = "What went well this week? What can be improved?",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                            )
-                        }
+                                .height(120.dp),
+                            placeholder = { 
+                                Text(
+                                    text = "What went well this week? What can be improved?",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                ) 
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
+                                focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                                unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        )
                         
                         Spacer(modifier = Modifier.height(16.dp))
                         

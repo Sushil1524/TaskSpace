@@ -26,7 +26,9 @@ fun TaskSpaceNavGraph(
         composable("home") {
             HomeScreen(
                 viewModel = viewModel,
-                onWeeklyTasksClick = { navController.navigate("weekly_tasks") }
+                onWeeklyTasksClick = { navController.navigate("weekly_tasks") },
+                onHistoryClick = { navController.navigate("history") },
+                onInsightsClick = { navController.navigate("insights") }
             )
         }
         composable("task_detail/{taskId}") { backStackEntry ->
@@ -39,8 +41,158 @@ fun TaskSpaceNavGraph(
                 )
             }
         }
-        composable("weekly_tasks") {
+        composable(
+            route = "weekly_tasks",
+            enterTransition = {
+                androidx.compose.animation.fadeIn(
+                    animationSpec = androidx.compose.animation.core.tween(
+                        300
+                    )
+                ) +
+                        androidx.compose.animation.scaleIn(
+                            initialScale = 0.95f,
+                            animationSpec = androidx.compose.animation.core.tween(300)
+                        )
+            },
+            exitTransition = {
+                androidx.compose.animation.fadeOut(
+                    animationSpec = androidx.compose.animation.core.tween(
+                        300
+                    )
+                ) +
+                        androidx.compose.animation.scaleOut(
+                            targetScale = 0.95f,
+                            animationSpec = androidx.compose.animation.core.tween(300)
+                        )
+            },
+            popEnterTransition = {
+                androidx.compose.animation.fadeIn(
+                    animationSpec = androidx.compose.animation.core.tween(
+                        300
+                    )
+                ) +
+                        androidx.compose.animation.scaleIn(
+                            initialScale = 0.95f,
+                            animationSpec = androidx.compose.animation.core.tween(300)
+                        )
+            },
+            popExitTransition = {
+                androidx.compose.animation.fadeOut(
+                    animationSpec = androidx.compose.animation.core.tween(
+                        300
+                    )
+                ) +
+                        androidx.compose.animation.scaleOut(
+                            targetScale = 0.95f,
+                            animationSpec = androidx.compose.animation.core.tween(300)
+                        )
+            }
+        ) {
             WeeklyTasksScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(
+            route = "history",
+            enterTransition = {
+                androidx.compose.animation.fadeIn(
+                    animationSpec = androidx.compose.animation.core.tween(
+                        300
+                    )
+                ) +
+                        androidx.compose.animation.scaleIn(
+                            initialScale = 0.95f,
+                            animationSpec = androidx.compose.animation.core.tween(300)
+                        )
+            },
+            exitTransition = {
+                androidx.compose.animation.fadeOut(
+                    animationSpec = androidx.compose.animation.core.tween(
+                        300
+                    )
+                ) +
+                        androidx.compose.animation.scaleOut(
+                            targetScale = 0.95f,
+                            animationSpec = androidx.compose.animation.core.tween(300)
+                        )
+            },
+            popEnterTransition = {
+                androidx.compose.animation.fadeIn(
+                    animationSpec = androidx.compose.animation.core.tween(
+                        300
+                    )
+                ) +
+                        androidx.compose.animation.scaleIn(
+                            initialScale = 0.95f,
+                            animationSpec = androidx.compose.animation.core.tween(300)
+                        )
+            },
+            popExitTransition = {
+                androidx.compose.animation.fadeOut(
+                    animationSpec = androidx.compose.animation.core.tween(
+                        300
+                    )
+                ) +
+                        androidx.compose.animation.scaleOut(
+                            targetScale = 0.95f,
+                            animationSpec = androidx.compose.animation.core.tween(300)
+                        )
+            }
+        ) {
+            com.sg.taskspace.ui.screens.HistoryScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(
+            route = "insights",
+            enterTransition = {
+                androidx.compose.animation.fadeIn(
+                    animationSpec = androidx.compose.animation.core.tween(
+                        300
+                    )
+                ) +
+                        androidx.compose.animation.scaleIn(
+                            initialScale = 0.95f,
+                            animationSpec = androidx.compose.animation.core.tween(300)
+                        )
+            },
+            exitTransition = {
+                androidx.compose.animation.fadeOut(
+                    animationSpec = androidx.compose.animation.core.tween(
+                        300
+                    )
+                ) +
+                        androidx.compose.animation.scaleOut(
+                            targetScale = 0.95f,
+                            animationSpec = androidx.compose.animation.core.tween(300)
+                        )
+            },
+            popEnterTransition = {
+                androidx.compose.animation.fadeIn(
+                    animationSpec = androidx.compose.animation.core.tween(
+                        300
+                    )
+                ) +
+                        androidx.compose.animation.scaleIn(
+                            initialScale = 0.95f,
+                            animationSpec = androidx.compose.animation.core.tween(300)
+                        )
+            },
+            popExitTransition = {
+                androidx.compose.animation.fadeOut(
+                    animationSpec = androidx.compose.animation.core.tween(
+                        300
+                    )
+                ) +
+                        androidx.compose.animation.scaleOut(
+                            targetScale = 0.95f,
+                            animationSpec = androidx.compose.animation.core.tween(300)
+                        )
+            }
+        ) {
+            com.sg.taskspace.ui.screens.InsightsScreen(
                 viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() }
             )

@@ -11,6 +11,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        window.decorView.setBackgroundColor(android.graphics.Color.BLACK) // Fix white flash on navigation
         setContent {
             TaskSpaceTheme {
                 TaskSpaceNavGraph()
