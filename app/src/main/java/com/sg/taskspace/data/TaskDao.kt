@@ -13,13 +13,16 @@ interface TaskDao {
     @Query("SELECT * FROM tasks")
     fun getAllTasks(): Flow<List<Task>>
 
+    @Query("SELECT * FROM tasks")
+    suspend fun getAllTasksSync(): List<Task>
+
     // Get tasks for a specific date (One-time for that date OR Daily OR Weekly on that day)
     @Query("""
         SELECT * FROM tasks 
         WHERE createdForDate = :date 
         OR repeat = 'Daily' 
         OR (repeat = 'Weekly' AND repeatDayOfWeek = :dayOfWeek)
-        ORDER BY  
+        ORDER BY 
         CASE LOWER(priority)
             WHEN 'high' THEN 1
             WHEN 'medium' THEN 2
@@ -30,12 +33,6 @@ interface TaskDao {
     fun getTasksForDate(date: String, dayOfWeek: String): Flow<List<Task>>
 
     // Get tasks created for a specific range (for History/Insights - mainly one-time tasks or instances)
-    // Note: Handling recurring tasks in history is tricky. 
-    // For now, we'll just query tasks that have a specific createdForDate in the range.
-    // A more complex app would generate "instances" of recurring tasks. 
-    // Given the requirements, we might need to rely on the UI to expand recurring tasks or just show what was "completed" on that day if we track completions separately.
-    // For simplicity in Phase 1, we will assume "History" shows tasks that were *completed* in that range, or *created* for that range.
-    // Let's stick to simple date filtering for now.
     @Query("SELECT * FROM tasks WHERE createdForDate BETWEEN :startDate AND :endDate")
     fun getTasksForDateRange(startDate: String, endDate: String): Flow<List<Task>>
 

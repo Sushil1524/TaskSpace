@@ -4,6 +4,8 @@ import kotlinx.coroutines.flow.Flow
 
 class TaskRepository(private val taskDao: TaskDao) {
     fun getAllTasks(): Flow<List<Task>> = taskDao.getAllTasks()
+    
+    suspend fun getAllTasksSync(): List<Task> = taskDao.getAllTasksSync()
 
     fun getTasksForDate(date: String, dayOfWeek: String): Flow<List<Task>> = 
         taskDao.getTasksForDate(date, dayOfWeek)

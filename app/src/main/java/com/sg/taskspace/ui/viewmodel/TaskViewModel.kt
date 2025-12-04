@@ -1,4 +1,5 @@
 package com.sg.taskspace.ui.viewmodel
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -20,7 +21,46 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.IsoFields
 
-class TaskViewModel(private val taskRepository: TaskRepository) : ViewModel() {
+class TaskViewModel(
+    private val taskRepository: TaskRepository,
+    private val userPreferencesRepository: com.sg.taskspace.data.UserPreferencesRepository,
+    private val dataTransferManager: com.sg.taskspace.data.DataTransferManager
+) : ViewModel() {
+
+    fun exportData(uri: android.net.Uri, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val result = dataTransferManager.exportData(uri)
+            onResult(result.isSuccess)
+        }
+    }
+
+    fun importData(uri: android.net.Uri, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val result = dataTransferManager.importData(uri)
+            // If success, we might need to reload data or just let Flow update.
+            // Flow should update automatically if Room observes changes.
+            onResult(result.isSuccess)
+        }
+    }
+
+    val userPreferences: StateFlow<com.sg.taskspace.data.UserPreferences?> = userPreferencesRepository.userPreferencesFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+
+    fun saveUserName(name: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateUserName(name)
+        }
+    }
+
+    fun completeOnboarding() {
+        viewModelScope.launch {
+            userPreferencesRepository.setOnboardingCompleted(true)
+        }
+    }
 
     // Date & Time Logic
     private val currentDate = LocalDate.now()
@@ -31,12 +71,7 @@ class TaskViewModel(private val taskRepository: TaskRepository) : ViewModel() {
     private val todayIso = currentDate.format(DateTimeFormatter.ISO_DATE)
     private val dayOfWeek = currentDate.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }
 
-    val homeTasks: StateFlow<List<Task>> = taskRepository.getTasksForDate(todayIso, dayOfWeek)
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
+
 
     // Motivation Logic
     // Motivation Logic (Moved to UI)
@@ -53,9 +88,7 @@ class TaskViewModel(private val taskRepository: TaskRepository) : ViewModel() {
     // Update homeTasks to observe selectedDate
     // currentDisplayTasks moved to below to use new logic
 
-    fun selectDate(date: LocalDate) {
-        _selectedDate.value = date
-    }
+
 
     // Categories
     // Categories (Defined in UI/Bottom Sheet)
@@ -250,7 +283,7 @@ class TaskViewModel(private val taskRepository: TaskRepository) : ViewModel() {
                     .groupBy { 
                         try {
                             LocalDate.parse(it.createdForDate, DateTimeFormatter.ISO_DATE).dayOfWeek 
-                        } catch (e: Exception) {
+                        } catch (_: Exception) {
                             null
                         }
                     }
@@ -378,7 +411,11 @@ class TaskViewModel(private val taskRepository: TaskRepository) : ViewModel() {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val application = (this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as TaskSpaceApplication)
-                TaskViewModel(application.container.taskRepository)
+                TaskViewModel(
+                    application.container.taskRepository,
+                    application.container.userPreferencesRepository,
+                    application.container.dataTransferManager
+                )
             }
         }
     }

@@ -5,48 +5,63 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import java.io.IOException
 
-val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "user_preferences")
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "user_preferences")
 
 class UserPreferencesRepository(private val context: Context) {
-    private val IS_ONBOARDING_COMPLETED = booleanPreferencesKey("is_onboarding_completed")
-    private val USER_NAME = stringPreferencesKey("user_name")
-    private val IS_DARK_MODE = booleanPreferencesKey("is_dark_mode")
 
-    val isOnboardingCompleted: Flow<Boolean> = context.dataStore.data
+    private object PreferencesKeys {
+        val USER_NAME = stringPreferencesKey("user_name")
+        val IS_ONBOARDING_COMPLETED = booleanPreferencesKey("is_onboarding_completed")
+    }
+
+    val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
         .map { preferences ->
-            preferences[IS_ONBOARDING_COMPLETED] ?: false
+            val userName = preferences[PreferencesKeys.USER_NAME] ?: "User"
+            val isOnboardingCompleted = preferences[PreferencesKeys.IS_ONBOARDING_COMPLETED] ?: false
+            UserPreferences(userName, isOnboardingCompleted)
         }
 
-    val userName: Flow<String> = context.dataStore.data
-        .map { preferences ->
-            preferences[USER_NAME] ?: ""
-        }
-        
-    val isDarkMode: Flow<Boolean> = context.dataStore.data
-        .map { preferences ->
-            preferences[IS_DARK_MODE] ?: false // Default to system/light? Let's say false for now
-        }
-
-    suspend fun saveOnboardingCompleted(completed: Boolean) {
+    suspend fun updateUserName(name: String) {
         context.dataStore.edit { preferences ->
-            preferences[IS_ONBOARDING_COMPLETED] = completed
+            preferences[PreferencesKeys.USER_NAME] = name
         }
     }
 
-    suspend fun saveUserName(name: String) {
+    suspend fun setOnboardingCompleted(completed: Boolean) {
         context.dataStore.edit { preferences ->
-            preferences[USER_NAME] = name
+            preferences[PreferencesKeys.IS_ONBOARDING_COMPLETED] = completed
         }
     }
     
-    suspend fun saveDarkMode(enabled: Boolean) {
+    suspend fun fetchInitialPreferences(): UserPreferences {
+        return userPreferencesFlow.first()
+    }
+
+    suspend fun restorePreferences(userName: String, isOnboardingCompleted: Boolean) {
         context.dataStore.edit { preferences ->
-            preferences[IS_DARK_MODE] = enabled
+            preferences[PreferencesKeys.USER_NAME] = userName
+            preferences[PreferencesKeys.IS_ONBOARDING_COMPLETED] = isOnboardingCompleted
         }
     }
 }
+
+data class UserPreferences(
+    val userName: String,
+    val isOnboardingCompleted: Boolean
+)

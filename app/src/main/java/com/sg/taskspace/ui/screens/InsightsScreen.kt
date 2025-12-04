@@ -161,7 +161,7 @@ fun InsightsScreen(
                          Text("No tasks this month", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else {
                         data.categoryDistribution.forEach { (category, stats) ->
-                            CategoryRow(category = category, count = stats.first, completed = stats.second, total = data.totalTasksThisMonth)
+                            CategoryRow(category = category, count = stats.first, completed = stats.second)
                         }
                     }
                 }
@@ -205,7 +205,7 @@ fun StatItem(label: String, value: String) {
 }
 
 @Composable
-fun CategoryRow(category: String, count: Int, completed: Int, total: Int) {
+fun CategoryRow(category: String, count: Int, completed: Int) {
     val completionRate = if (count > 0) completed.toFloat() / count else 0f
     
     Row(

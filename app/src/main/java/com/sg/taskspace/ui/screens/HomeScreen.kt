@@ -44,7 +44,8 @@ fun HomeScreen(
     viewModel: TaskViewModel,
     onWeeklyTasksClick: () -> Unit,
     onHistoryClick: () -> Unit,
-    onInsightsClick: () -> Unit
+    onInsightsClick: () -> Unit,
+    onSettingsClick: () -> Unit
 ) {
     val tasks by viewModel.currentDisplayTasks.collectAsState()
     val formattedDate = viewModel.formattedDate
@@ -146,8 +147,9 @@ fun HomeScreen(
                         IconButton(onClick = onInsightsClick) {
                             Icon(Icons.Default.BarChart, contentDescription = "Analytics", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        Icon(Icons.Default.CalendarMonth, contentDescription = "Calendar", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        IconButton(onClick = onSettingsClick) {
+                            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
             }
