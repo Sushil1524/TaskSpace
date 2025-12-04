@@ -85,7 +85,8 @@ class TaskViewModel(private val taskRepository: TaskRepository) : ViewModel() {
 
         // 2. Get relevant repeating tasks
         val relevantRepeating = repeatingTasks.filter {
-            it.repeat == "Daily" || (it.repeat == "Weekly" && it.repeatDayOfWeek == dayName)
+            (it.repeat == "Daily" || (it.repeat == "Weekly" && it.repeatDayOfWeek == dayName)) &&
+            it.createdForDate <= dateIso // Only show if current date is on or after creation date
         }
 
         // 3. Filter out repeating tasks that have a completion instance (child) in specificTasks
@@ -210,7 +211,7 @@ class TaskViewModel(private val taskRepository: TaskRepository) : ViewModel() {
         val completionRateThisMonth: Int,
         val bestDayOfWeek: String,
         val currentStreak: Int,
-        val categoryDistribution: Map<String, Int>,
+        val categoryDistribution: Map<String, Pair<Int, Int>>, // Total, Completed
         val needsFocus: String
     )
 
@@ -230,7 +231,6 @@ class TaskViewModel(private val taskRepository: TaskRepository) : ViewModel() {
             taskRepository.getTasksForDateRange(startIso, endIso), // Month tasks
             taskRepository.getTasksForDateRange(streakStartIso, todayIso), // Streak candidates (approx)
             taskRepository.getRepeatingTasks()
-
         ) { monthTasks, streakCandidateTasks, repeatingTasks ->
             try {
                 // 1. Monthly Stats
@@ -258,7 +258,9 @@ class TaskViewModel(private val taskRepository: TaskRepository) : ViewModel() {
                     .maxByOrNull { it.value.size }?.key?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "N/A"
 
                 // 3. Category Distribution (This Month)
-                val categories = allMonthTasks.groupBy { it.category }.mapValues { it.value.size }
+                val categories = allMonthTasks.groupBy { it.category }.mapValues { 
+                    Pair(it.value.size, it.value.count { task -> task.isCompleted })
+                }
 
                 // 4. Current Streak
                 // Check backwards from yesterday/today

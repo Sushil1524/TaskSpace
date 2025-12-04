@@ -160,8 +160,8 @@ fun InsightsScreen(
                     if (data.categoryDistribution.isEmpty()) {
                          Text("No tasks this month", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else {
-                        data.categoryDistribution.forEach { (category, count) ->
-                            CategoryRow(category = category, count = count, total = data.totalTasksThisMonth)
+                        data.categoryDistribution.forEach { (category, stats) ->
+                            CategoryRow(category = category, count = stats.first, completed = stats.second, total = data.totalTasksThisMonth)
                         }
                     }
                 }
@@ -205,8 +205,8 @@ fun StatItem(label: String, value: String) {
 }
 
 @Composable
-fun CategoryRow(category: String, count: Int, total: Int) {
-    val percentage = if (total > 0) count.toFloat() / total else 0f
+fun CategoryRow(category: String, count: Int, completed: Int, total: Int) {
+    val completionRate = if (count > 0) completed.toFloat() / count else 0f
     
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -220,11 +220,11 @@ fun CategoryRow(category: String, count: Int, total: Int) {
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(category.ifEmpty { "Uncategorized" }, modifier = Modifier.weight(1f))
-        Text("$count", fontWeight = FontWeight.Bold)
+        Text("$completed/$count", fontWeight = FontWeight.Bold)
     }
     Spacer(modifier = Modifier.height(4.dp))
     LinearProgressIndicator(
-        progress = { percentage },
+        progress = { completionRate },
         modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
         trackColor = MaterialTheme.colorScheme.surfaceVariant,
