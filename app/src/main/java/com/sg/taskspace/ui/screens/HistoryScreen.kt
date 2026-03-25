@@ -26,8 +26,6 @@ fun HistoryScreen(
     onNavigateBack: () -> Unit
 ) {
     
-    // Adjust to Sunday start if locale doesn't match user preference (User wants Sunday start)
-    // Simple fix: Always calculate Sunday start manually
     val currentDayOfWeek = LocalDate.now().dayOfWeek.value % 7
     val thisSunday = LocalDate.now().minusDays(currentDayOfWeek.toLong())
     

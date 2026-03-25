@@ -58,20 +58,10 @@ class DataTransferManager(
                 val jsonString = stringBuilder.toString()
                 val backupData = gson.fromJson(jsonString, BackupData::class.java)
 
-                // Restore Data
-                // 1. Clear existing tasks? Or merge?
-                // Usually restore implies replacing or merging. Let's replace for simplicity/cleanliness, or maybe just add.
-                // User said "restore", which usually means "bring back state".
-                // I'll clear and insert.
-                // Wait, clearing might be dangerous.
-                // Let's just upsert (insert with conflict replacement).
-                // Our Dao insert is OnConflictStrategy.REPLACE usually.
-                
                 backupData.tasks.forEach { task ->
                     taskRepository.insertTask(task)
                 }
                 
-                // Restore Prefs
                 userPreferencesRepository.restorePreferences(
                     backupData.userPreferences.userName,
                     backupData.userPreferences.isOnboardingCompleted

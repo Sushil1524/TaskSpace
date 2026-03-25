@@ -25,12 +25,8 @@ fun WeeklyTasksScreen(
     val weeklyTasks by viewModel.weeklyTasks.collectAsState()
     val selectedDate by viewModel.selectedDate.collectAsState()
     
-    // Local state for the selected day in this view (default to current selectedDate from VM)
-    // We initialize it once with the VM's date, but then it's independent.
     var currentTabDate by remember { mutableStateOf(selectedDate) }
     
-    // REMOVED: LaunchedEffect to sync back from VM. We want this screen to be independent navigation.
-
     var showBottomSheet by remember { mutableStateOf(false) }
     var taskToEdit by remember { mutableStateOf<Task?>(null) }
 
@@ -108,7 +104,6 @@ fun WeeklyTasksScreen(
                             selected = isSelected,
                             onClick = { 
                                 currentTabDate = date 
-                                // REMOVED: viewModel.selectDate(date) - This fixes the bug!
                             },
                             text = { 
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {

@@ -37,8 +37,6 @@ class TaskViewModel(
     fun importData(uri: android.net.Uri, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
             val result = dataTransferManager.importData(uri)
-            // If success, we might need to reload data or just let Flow update.
-            // Flow should update automatically if Room observes changes.
             onResult(result.isSuccess)
         }
     }
@@ -71,27 +69,8 @@ class TaskViewModel(
     private val todayIso = currentDate.format(DateTimeFormatter.ISO_DATE)
     private val dayOfWeek = currentDate.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }
 
-
-
-    // Motivation Logic
-    // Motivation Logic (Moved to UI)
-
-    // Weekly Progress (Placeholder for now, or simple implementation)
-    // We need a list of days (Mon-Sun) and their completion status
-    // For Phase 2, let's just show the days and make them clickable (to filter? or just visual?)
-    // User said: "shows mon thru sun and they are clickable and it shows total task and completed task with the list of that particular day"
-    // This implies clicking a day changes the "Today's Task" list to that day.
-    
     private val _selectedDate = MutableStateFlow(currentDate)
     val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
-
-    // Update homeTasks to observe selectedDate
-    // currentDisplayTasks moved to below to use new logic
-
-
-
-    // Categories
-    // Categories (Defined in UI/Bottom Sheet)
 
     data class DayStats(val date: LocalDate, val totalTasks: Int, val completedTasks: Int)
 
@@ -112,8 +91,6 @@ class TaskViewModel(
         val dateIso = date.format(DateTimeFormatter.ISO_DATE)
         val dayName = date.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }
 
-        // 1. Get all specific tasks for this day (including completed instances of repeating tasks)
-        // CRITICAL FIX: Exclude repeating templates from here to avoid duplicates if they were created today.
         val specificTasks = rangeTasks.filter { it.createdForDate == dateIso && it.repeat == "None" }
 
         // 2. Get relevant repeating tasks
@@ -191,15 +168,9 @@ class TaskViewModel(
     @OptIn(ExperimentalCoroutinesApi::class)
     val currentDisplayTasks: StateFlow<List<Task>> = _selectedDate.flatMapLatest { date ->
         val dateIso = date.format(DateTimeFormatter.ISO_DATE)
-        
-        // We need to fetch range tasks for just this day to be efficient, 
-        // but our Repo only has getTasksForDateRange or getTasksForDate.
-        // getTasksForDate in Dao includes repeating logic in SQL, which is now insufficient because of the parentId check.
-        // So we should fetch "specific tasks" for today and "repeating tasks" and merge them in Kotlin.
-        
+       
         kotlinx.coroutines.flow.combine(
-            taskRepository.getTasksForDate(dateIso, ""), // We can use this but ignore its repeating logic? No, it returns mixed.
-            // Let's use getTasksForDateRange for just today.
+            taskRepository.getTasksForDate(dateIso, ""), 
             taskRepository.getTasksForDateRange(dateIso, dateIso),
             taskRepository.getRepeatingTasks()
         ) { _, rangeTasks, repeatingTasks -> // Ignore the first one
@@ -267,7 +238,6 @@ class TaskViewModel(
         ) { monthTasks, streakCandidateTasks, repeatingTasks ->
             try {
                 // 1. Monthly Stats
-                // We need to expand repeating tasks for the month
                 val allMonthTasks = mutableListOf<Task>()
                 for (i in 0 until endOfMonth.dayOfMonth) {
                     val date = startOfMonth.plusDays(i.toLong())
@@ -296,12 +266,8 @@ class TaskViewModel(
                 }
 
                 // 4. Current Streak
-                // Check backwards from yesterday/today
                 var streak = 0
                 var checkDate = LocalDate.now()
-                // If today has completed tasks, start counting from today. If not, check yesterday.
-                // Actually, streak usually implies consecutive days *ending* today or yesterday.
-                
                 // Helper to check if a day has completed tasks
                 fun hasCompletedTasks(date: LocalDate): Boolean {
                     val tasks = getTasksForDay(date, streakCandidateTasks, repeatingTasks)
@@ -312,7 +278,6 @@ class TaskViewModel(
                     streak++
                     checkDate = checkDate.minusDays(1)
                 } else {
-                     // If today has no completed tasks yet, streak might still be alive from yesterday
                      checkDate = checkDate.minusDays(1)
                 }
 
@@ -323,7 +288,6 @@ class TaskViewModel(
                 }
 
                 // 5. Needs Focus
-                // Category with lowest completion rate (min 1 task)
                 val needsFocus = allMonthTasks.groupBy { it.category }
                     .filter { it.value.isNotEmpty() }
                     .minByOrNull { entry ->
@@ -366,8 +330,6 @@ class TaskViewModel(
     fun toggleTaskCompletion(task: Task) {
         viewModelScope.launch {
             if (task.repeat != "None") {
-                // It's a repeating task (Template). User wants to complete it for TODAY.
-                // Create a new instance for today that is completed.
                 val todayIso = _selectedDate.value.format(DateTimeFormatter.ISO_DATE)
                 val completedInstance = task.copy(
                     id = java.util.UUID.randomUUID().toString(),
@@ -378,11 +340,8 @@ class TaskViewModel(
                 )
                 taskRepository.insertTask(completedInstance)
             } else if (task.parentId != null && task.isCompleted) {
-                // It's a completed instance of a repeating task. User is un-checking it.
-                // We should delete this instance so the original repeating task shows up again.
                 taskRepository.deleteTask(task)
             } else {
-                // Normal task or disconnected instance
                 taskRepository.updateTask(task.copy(isCompleted = !task.isCompleted))
             }
         }
@@ -401,9 +360,6 @@ class TaskViewModel(
     }
 
     fun getTaskById(taskId: String): Flow<Task?> {
-        // We need to add getTaskById to Repository and Dao first, or just filter from all tasks if list is small.
-        // Better to add to Dao/Repo for correctness.
-        // For now, let's assume we add it to Repo.
         return taskRepository.getTaskById(taskId)
     }
 

@@ -50,7 +50,6 @@ fun HomeScreen(
     val tasks by viewModel.currentDisplayTasks.collectAsState()
     val formattedDate = viewModel.formattedDate
     val weekNumber = viewModel.weekNumber
-    // motivationText removed as it was unused
     val selectedDate by viewModel.selectedDate.collectAsState()
     val weeklyStats by viewModel.weeklyStats.collectAsState()
     val weeklyTasks by viewModel.weeklyTasks.collectAsState()
@@ -81,14 +80,11 @@ fun HomeScreen(
         val dateIso = date.format(java.time.format.DateTimeFormatter.ISO_DATE)
         val dayName = date.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }
 
-        // Filter tasks for this day from weeklyTasks
-        // Updated logic to handle repeating tasks and their completed instances
         val dayTasks = weeklyTasks.filter { task ->
             val isSpecific = task.createdForDate == dateIso
             val isRepeating = task.repeat == "Daily" || (task.repeat == "Weekly" && task.repeatDayOfWeek == dayName)
             isSpecific || isRepeating
         }.filter { task ->
-            // If it's a repeating task, keep it ONLY if there is NO specific task (exception) for this day that points to it
             if (task.repeat != "None") {
                 weeklyTasks.none { it.parentId == task.id && it.createdForDate == dateIso }
             } else {
@@ -173,9 +169,6 @@ fun HomeScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            // 1. Header (Removed from here, moved to topBar)
-
-            // 2. Date & Week
             item {
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 16.dp),
@@ -264,7 +257,7 @@ fun HomeScreen(
                 }
             }
 
-            // 3.5 Level/XP Card (Removed)
+            // 3.5 Level/XP Card
 
             // 4. Weekly Progress
             item {
@@ -284,71 +277,6 @@ fun HomeScreen(
                     )
                 }
             }
-//
-//            // 4.5 Weekly Reflection Card (New)
-//            item {
-//                Card(
-//                    modifier = Modifier.fillMaxWidth(),
-//                    colors = CardDefaults.cardColors(
-//                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-//                    ),
-//                    shape = RoundedCornerShape(16.dp),
-//                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
-//                ) {
-//                    Column(modifier = Modifier.padding(16.dp)) {
-//                        Row(verticalAlignment = Alignment.CenterVertically) {
-//                            Icon(Icons.Default.Book, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-//                            Spacer(modifier = Modifier.width(8.dp))
-//                            Text(
-//                                text = "Weekly Reflection",
-//                                style = MaterialTheme.typography.titleMedium,
-//                                fontWeight = FontWeight.Bold,
-//                                color = MaterialTheme.colorScheme.onSurface
-//                            )
-//                        }
-//                        Spacer(modifier = Modifier.height(16.dp))
-//
-//                        // Editable Reflection Input
-//                        val reflectionText by viewModel.reflectionText.collectAsState()
-//
-//                        OutlinedTextField(
-//                            value = reflectionText,
-//                            onValueChange = { viewModel.updateReflectionText(it) },
-//                            modifier = Modifier
-//                                .fillMaxWidth()
-//                                .height(120.dp),
-//                            placeholder = {
-//                                Text(
-//                                    text = "What went well this week? What can be improved?",
-//                                    style = MaterialTheme.typography.bodyMedium,
-//                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-//                                )
-//                            },
-//                            colors = OutlinedTextFieldDefaults.colors(
-//                                focusedBorderColor = MaterialTheme.colorScheme.primary,
-//                                unfocusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
-//                                focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
-//                                unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent
-//                            ),
-//                            shape = RoundedCornerShape(8.dp)
-//                        )
-//
-//                        Spacer(modifier = Modifier.height(16.dp))
-//
-//                        Button(
-//                            onClick = { /* TODO: Save Reflection */ },
-//                            modifier = Modifier.fillMaxWidth(),
-//                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-//                        ) {
-//                            Icon(Icons.Default.Save, contentDescription = null)
-//                            Spacer(modifier = Modifier.width(8.dp))
-//                            Text("Save Notes")
-//                        }
-//                    }
-//                }
-//            }
-
-            // 4.6 Set Up Weekly Plan Button (New)
             item {
                 Button(
                     onClick = { onWeeklyTasksClick() },
@@ -406,7 +334,6 @@ fun HomeScreen(
                 }
             }
             
-            // Bottom padding for FAB
             item { Spacer(modifier = Modifier.height(80.dp)) }
         }
     }

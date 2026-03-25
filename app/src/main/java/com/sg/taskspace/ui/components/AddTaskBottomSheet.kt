@@ -29,7 +29,7 @@ fun AddTaskBottomSheet(
                 .padding(16.dp)
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(bottom = 32.dp), // Add padding for keyboard/navigation bar
+                .padding(bottom = 32.dp), 
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(

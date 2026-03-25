@@ -70,12 +70,6 @@ fun TaskDetailScreen(
                                 viewModel.addTask(editedTitle, editedNotes, editedPriority,
                                     task!!.category
                                 )
-                                // Note: addTask creates a NEW task. We need updateTask logic in VM for editing existing.
-                                // Let's fix this in VM or use a workaround. 
-                                // Actually, we should update the existing task.
-                                // Let's add updateTaskById logic to VM or just use updateTask with the same ID.
-                                // Since addTask generates a new ID in VM, we need a dedicated update method.
-                                // For now, let's assume we'll add `updateTaskDetails` to VM.
                                 viewModel.updateTaskDetails(task!!.copy(
                                     title = editedTitle,
                                     notes = editedNotes,
