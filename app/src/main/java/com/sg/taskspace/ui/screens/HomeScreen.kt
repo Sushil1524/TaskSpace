@@ -1,5 +1,6 @@
 package com.sg.taskspace.ui.screens
 
+import com.sg.taskspace.data.Task
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,6 +15,8 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Loop
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
@@ -31,7 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.sg.taskspace.data.Task
+import androidx.compose.ui.graphics.vector.ImageVector
 import com.sg.taskspace.ui.components.TaskCard
 import com.sg.taskspace.ui.components.WeeklyProgressRow
 import com.sg.taskspace.ui.viewmodel.TaskViewModel
@@ -45,7 +48,10 @@ fun HomeScreen(
     onWeeklyTasksClick: () -> Unit,
     onHistoryClick: () -> Unit,
     onInsightsClick: () -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    onHabitsClick: () -> Unit,
+    onGoalsClick: () -> Unit,
+    onJournalClick: () -> Unit
 ) {
     val tasks by viewModel.currentDisplayTasks.collectAsState()
     val formattedDate = viewModel.formattedDate
@@ -257,7 +263,17 @@ fun HomeScreen(
                 }
             }
 
-            // 3.5 Level/XP Card
+            // 3.5 Quick Actions (Habits, Goals, Journal)
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    QuickActionCard("Habits", Icons.Default.Loop, Modifier.weight(1f), onHabitsClick)
+                    QuickActionCard("Goals", Icons.Default.Flag, Modifier.weight(1f), onGoalsClick)
+                    QuickActionCard("Journal", Icons.Default.Book, Modifier.weight(1f), onJournalClick)
+                }
+            }
 
             // 4. Weekly Progress
             item {
@@ -356,6 +372,23 @@ private fun StatColumn(label: String, value: String) {
     }
 }
 
-
-
-
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun QuickActionCard(label: String, icon: ImageVector, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        modifier = modifier.height(80.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+        }
+    }
+}

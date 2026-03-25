@@ -12,9 +12,15 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.sg.taskspace.ui.viewmodel.TaskViewModel
+import com.sg.taskspace.ui.viewmodel.HabitViewModel
+import com.sg.taskspace.ui.viewmodel.GoalViewModel
+import com.sg.taskspace.ui.viewmodel.JournalViewModel
 import com.sg.taskspace.ui.screens.HomeScreen
 import com.sg.taskspace.ui.screens.TaskDetailScreen
 import com.sg.taskspace.ui.screens.WeeklyTasksScreen
+import com.sg.taskspace.ui.screens.HabitScreen
+import com.sg.taskspace.ui.screens.GoalScreen
+import com.sg.taskspace.ui.screens.JournalScreen
 
 @Composable
 fun TaskSpaceNavGraph(
@@ -22,6 +28,10 @@ fun TaskSpaceNavGraph(
     navController: NavHostController = rememberNavController(),
     viewModel: TaskViewModel = viewModel(factory = TaskViewModel.Companion.Factory)
 ) {
+    val habitViewModel: HabitViewModel = viewModel(factory = HabitViewModel.Companion.Factory)
+    val goalViewModel: GoalViewModel = viewModel(factory = GoalViewModel.Companion.Factory)
+    val journalViewModel: JournalViewModel = viewModel(factory =JournalViewModel.Companion.Factory)
+
     val userPreferences by viewModel.userPreferences.collectAsState()
     val currentPrefs = userPreferences
 
@@ -56,7 +66,28 @@ fun TaskSpaceNavGraph(
                     onWeeklyTasksClick = { navController.navigate("weekly_tasks") },
                     onHistoryClick = { navController.navigate("history") },
                     onInsightsClick = { navController.navigate("insights") },
-                    onSettingsClick = { navController.navigate("settings") }
+                    onSettingsClick = { navController.navigate("settings") },
+                    onHabitsClick = { navController.navigate("habits") },
+                    onGoalsClick = { navController.navigate("goals") },
+                    onJournalClick = { navController.navigate("journal") }
+                )
+            }
+            composable("habits") {
+                HabitScreen(
+                    viewModel = habitViewModel,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable("goals") {
+                GoalScreen(
+                    viewModel = goalViewModel,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable("journal") {
+                JournalScreen(
+                    viewModel = journalViewModel,
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
             composable("task_detail/{taskId}") { backStackEntry ->
