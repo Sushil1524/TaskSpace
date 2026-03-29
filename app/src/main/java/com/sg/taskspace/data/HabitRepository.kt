@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.Flow
 
 class HabitRepository(private val habitDao: HabitDao) {
     val allHabits: Flow<List<Habit>> = habitDao.getAllHabits()
+    val allHabitLogs: Flow<List<HabitLog>> = habitDao.getAllHabitLogs()
 
     suspend fun insertHabit(habit: Habit) {
         habitDao.insertHabit(habit)

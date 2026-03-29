@@ -109,7 +109,7 @@ fun SettingsScreen(
             SettingsItem(
                 icon = Icons.Default.Backup,
                 title = "Backup Data",
-                subtitle = "Export your tasks and settings to a JSON file",
+                subtitle = "Export tasks, journal, habits, goals, and settings to a JSON file",
                 onClick = { 
                     exportLauncher.launch("taskspace_backup_${System.currentTimeMillis()}.json")
                 }
@@ -117,7 +117,7 @@ fun SettingsScreen(
             SettingsItem(
                 icon = Icons.Default.Restore,
                 title = "Restore Data",
-                subtitle = "Import tasks and settings from a JSON file",
+                subtitle = "Import tasks, journal, habits, goals, and settings from a JSON file",
                 onClick = { 
                     importLauncher.launch(arrayOf("application/json"))
                 }

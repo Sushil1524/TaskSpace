@@ -47,6 +47,7 @@ fun HomeScreen(
     viewModel: TaskViewModel,
     onWeeklyTasksClick: () -> Unit,
     onHistoryClick: () -> Unit,
+    onAchievementsClick: () -> Unit,
     onInsightsClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onHabitsClick: () -> Unit,
@@ -145,7 +146,9 @@ fun HomeScreen(
                         IconButton(onClick = onHistoryClick) {
                             Icon(Icons.Default.History, contentDescription = "History", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        Icon(Icons.Default.EmojiEvents, contentDescription = "Trophies", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        IconButton(onClick = onAchievementsClick) {
+                            Icon(Icons.Default.EmojiEvents, contentDescription = "Achievements", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         IconButton(onClick = onInsightsClick) {
                             Icon(Icons.Default.BarChart, contentDescription = "Analytics", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }

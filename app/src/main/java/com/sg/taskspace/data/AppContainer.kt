@@ -9,6 +9,18 @@ interface AppContainer {
 }
 
 class AppDataContainer(private val context: Context) : AppContainer {
+    private val journalRepository: JournalRepository by lazy {
+        JournalRepository(AppDatabase.getDatabase(context).journalDao())
+    }
+
+    private val habitRepository: HabitRepository by lazy {
+        HabitRepository(AppDatabase.getDatabase(context).habitDao())
+    }
+
+    private val goalRepository: GoalRepository by lazy {
+        GoalRepository(AppDatabase.getDatabase(context).goalDao())
+    }
+
     override val taskRepository: TaskRepository by lazy {
         TaskRepository(AppDatabase.getDatabase(context).taskDao())
     }
@@ -18,6 +30,13 @@ class AppDataContainer(private val context: Context) : AppContainer {
     }
 
     override val dataTransferManager: DataTransferManager by lazy {
-        DataTransferManager(context, taskRepository, userPreferencesRepository)
+        DataTransferManager(
+            context = context,
+            taskRepository = taskRepository,
+            journalRepository = journalRepository,
+            habitRepository = habitRepository,
+            goalRepository = goalRepository,
+            userPreferencesRepository = userPreferencesRepository
+        )
     }
 }

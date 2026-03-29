@@ -2,6 +2,14 @@ package com.sg.taskspace.ui.navigation
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -11,28 +19,35 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.sg.taskspace.ui.screens.AchievementsScreen
 import com.sg.taskspace.ui.viewmodel.TaskViewModel
+import com.sg.taskspace.ui.viewmodel.AchievementsViewModel
 import com.sg.taskspace.ui.viewmodel.HabitViewModel
 import com.sg.taskspace.ui.viewmodel.GoalViewModel
 import com.sg.taskspace.ui.viewmodel.JournalViewModel
 import com.sg.taskspace.ui.screens.HomeScreen
 import com.sg.taskspace.ui.screens.TaskDetailScreen
+import com.sg.taskspace.ui.screens.InsightsScreen
+import com.sg.taskspace.ui.screens.HistoryScreen
 import com.sg.taskspace.ui.screens.WeeklyTasksScreen
+import com.sg.taskspace.ui.screens.SettingsScreen
 import com.sg.taskspace.ui.screens.HabitScreen
 import com.sg.taskspace.ui.screens.GoalScreen
 import com.sg.taskspace.ui.screens.JournalScreen
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskSpaceNavGraph(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
-    viewModel: TaskViewModel = viewModel(factory = TaskViewModel.Companion.Factory)
+    taskViewModel: TaskViewModel = viewModel(factory = TaskViewModel.Factory)
 ) {
-    val habitViewModel: HabitViewModel = viewModel(factory = HabitViewModel.Companion.Factory)
-    val goalViewModel: GoalViewModel = viewModel(factory = GoalViewModel.Companion.Factory)
-    val journalViewModel: JournalViewModel = viewModel(factory =JournalViewModel.Companion.Factory)
+    val achievementsViewModel: AchievementsViewModel = viewModel(factory = AchievementsViewModel.Factory)
+    val habitViewModel: HabitViewModel = viewModel(factory = HabitViewModel.Factory)
+    val goalViewModel: GoalViewModel = viewModel(factory = GoalViewModel.Factory)
+    val journalViewModel: JournalViewModel = viewModel(factory = JournalViewModel.Factory)
 
-    val userPreferences by viewModel.userPreferences.collectAsState()
+    val userPreferences by taskViewModel.userPreferences.collectAsState()
     val currentPrefs = userPreferences
 
     if (currentPrefs == null) {
@@ -52,7 +67,7 @@ fun TaskSpaceNavGraph(
         ) {
             composable("onboarding") {
                 com.sg.taskspace.ui.screens.OnboardingScreen(
-                    viewModel = viewModel,
+                    viewModel = taskViewModel,
                     onOnboardingComplete = {
                         navController.navigate("home") {
                             popUpTo("onboarding") { inclusive = true }
@@ -62,14 +77,59 @@ fun TaskSpaceNavGraph(
             }
             composable("home") {
                 HomeScreen(
-                    viewModel = viewModel,
+                    viewModel = taskViewModel,
                     onWeeklyTasksClick = { navController.navigate("weekly_tasks") },
                     onHistoryClick = { navController.navigate("history") },
+                    onAchievementsClick = { navController.navigate("achievements") },
                     onInsightsClick = { navController.navigate("insights") },
                     onSettingsClick = { navController.navigate("settings") },
                     onHabitsClick = { navController.navigate("habits") },
                     onGoalsClick = { navController.navigate("goals") },
                     onJournalClick = { navController.navigate("journal") }
+                )
+            }
+            composable(
+                route = "achievements",
+                enterTransition = {
+                    fadeIn(
+                        animationSpec = tween(300)
+                    ) +
+                        scaleIn(
+                            initialScale = 0.95f,
+                            animationSpec = tween(300)
+                        )
+                },
+                exitTransition = {
+                    fadeOut(
+                        animationSpec = tween(300)
+                    ) +
+                        scaleOut(
+                            targetScale = 0.95f,
+                            animationSpec = tween(300)
+                        )
+                },
+                popEnterTransition = {
+                    fadeIn(
+                        animationSpec = tween(300)
+                    ) +
+                        scaleIn(
+                            initialScale = 0.95f,
+                            animationSpec = tween(300)
+                        )
+                },
+                popExitTransition = {
+                    fadeOut(
+                        animationSpec = tween(300)
+                    ) +
+                        scaleOut(
+                            targetScale = 0.95f,
+                            animationSpec = tween(300)
+                        )
+                }
+            ) {
+                AchievementsScreen(
+                    viewModel = achievementsViewModel,
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
             composable("habits") {
@@ -95,7 +155,7 @@ fun TaskSpaceNavGraph(
                 if (taskId != null) {
                     TaskDetailScreen(
                         taskId = taskId,
-                        viewModel = viewModel,
+                        viewModel = taskViewModel,
                         onNavigateBack = { navController.popBackStack() }
                     )
                 }
@@ -103,196 +163,196 @@ fun TaskSpaceNavGraph(
             composable(
                 route = "weekly_tasks",
                 enterTransition = {
-                    androidx.compose.animation.fadeIn(
-                        animationSpec = androidx.compose.animation.core.tween(
+                    fadeIn(
+                        animationSpec = tween(
                             300
                         )
                     ) +
-                            androidx.compose.animation.scaleIn(
+                            scaleIn(
                                 initialScale = 0.95f,
-                                animationSpec = androidx.compose.animation.core.tween(300)
+                                animationSpec = tween(300)
                             )
                 },
                 exitTransition = {
-                    androidx.compose.animation.fadeOut(
-                        animationSpec = androidx.compose.animation.core.tween(
+                    fadeOut(
+                        animationSpec = tween(
                             300
                         )
                     ) +
-                            androidx.compose.animation.scaleOut(
+                            scaleOut(
                                 targetScale = 0.95f,
-                                animationSpec = androidx.compose.animation.core.tween(300)
+                                animationSpec = tween(300)
                             )
                 },
                 popEnterTransition = {
-                    androidx.compose.animation.fadeIn(
-                        animationSpec = androidx.compose.animation.core.tween(
+                    fadeIn(
+                        animationSpec = tween(
                             300
                         )
                     ) +
-                            androidx.compose.animation.scaleIn(
+                            scaleIn(
                                 initialScale = 0.95f,
-                                animationSpec = androidx.compose.animation.core.tween(300)
+                                animationSpec = tween(300)
                             )
                 },
                 popExitTransition = {
-                    androidx.compose.animation.fadeOut(
-                        animationSpec = androidx.compose.animation.core.tween(
+                    fadeOut(
+                        animationSpec = tween(
                             300
                         )
                     ) +
-                            androidx.compose.animation.scaleOut(
+                            scaleOut(
                                 targetScale = 0.95f,
-                                animationSpec = androidx.compose.animation.core.tween(300)
+                                animationSpec = tween(300)
                             )
                 }
             ) {
                 WeeklyTasksScreen(
-                    viewModel = viewModel,
+                    viewModel = taskViewModel,
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
             composable(
                 route = "history",
                 enterTransition = {
-                    androidx.compose.animation.fadeIn(
-                        animationSpec = androidx.compose.animation.core.tween(
+                    fadeIn(
+                        animationSpec = tween(
                             300
                         )
                     ) +
-                            androidx.compose.animation.scaleIn(
+                            scaleIn(
                                 initialScale = 0.95f,
-                                animationSpec = androidx.compose.animation.core.tween(300)
+                                animationSpec = tween(300)
                             )
                 },
                 exitTransition = {
-                    androidx.compose.animation.fadeOut(
-                        animationSpec = androidx.compose.animation.core.tween(
+                    fadeOut(
+                        animationSpec = tween(
                             300
                         )
                     ) +
-                            androidx.compose.animation.scaleOut(
+                            scaleOut(
                                 targetScale = 0.95f,
-                                animationSpec = androidx.compose.animation.core.tween(300)
+                                animationSpec = tween(300)
                             )
                 },
                 popEnterTransition = {
-                    androidx.compose.animation.fadeIn(
-                        animationSpec = androidx.compose.animation.core.tween(
+                    fadeIn(
+                        animationSpec = tween(
                             300
                         )
                     ) +
-                            androidx.compose.animation.scaleIn(
+                            scaleIn(
                                 initialScale = 0.95f,
-                                animationSpec = androidx.compose.animation.core.tween(300)
+                                animationSpec = tween(300)
                             )
                 },
                 popExitTransition = {
-                    androidx.compose.animation.fadeOut(
-                        animationSpec = androidx.compose.animation.core.tween(
+                    fadeOut(
+                        animationSpec = tween(
                             300
                         )
                     ) +
-                            androidx.compose.animation.scaleOut(
+                            scaleOut(
                                 targetScale = 0.95f,
-                                animationSpec = androidx.compose.animation.core.tween(300)
+                                animationSpec = tween(300)
                             )
                 }
             ) {
-                com.sg.taskspace.ui.screens.HistoryScreen(
-                    viewModel = viewModel,
+                HistoryScreen(
+                    viewModel = taskViewModel,
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
             composable(
                 route = "insights",
                 enterTransition = {
-                    androidx.compose.animation.fadeIn(
-                        animationSpec = androidx.compose.animation.core.tween(
+                    fadeIn(
+                        animationSpec = tween(
                             300
                         )
                     ) +
-                            androidx.compose.animation.scaleIn(
+                            scaleIn(
                                 initialScale = 0.95f,
-                                animationSpec = androidx.compose.animation.core.tween(300)
+                                animationSpec = tween(300)
                             )
                 },
                 exitTransition = {
-                    androidx.compose.animation.fadeOut(
-                        animationSpec = androidx.compose.animation.core.tween(
+                    fadeOut(
+                        animationSpec = tween(
                             300
                         )
                     ) +
-                            androidx.compose.animation.scaleOut(
+                            scaleOut(
                                 targetScale = 0.95f,
-                                animationSpec = androidx.compose.animation.core.tween(300)
+                                animationSpec = tween(300)
                             )
                 },
                 popEnterTransition = {
-                    androidx.compose.animation.fadeIn(
-                        animationSpec = androidx.compose.animation.core.tween(
+                    fadeIn(
+                        animationSpec = tween(
                             300
                         )
                     ) +
-                            androidx.compose.animation.scaleIn(
+                            scaleIn(
                                 initialScale = 0.95f,
-                                animationSpec = androidx.compose.animation.core.tween(300)
+                                animationSpec = tween(300)
                             )
                 },
                 popExitTransition = {
-                    androidx.compose.animation.fadeOut(
-                        animationSpec = androidx.compose.animation.core.tween(
+                    fadeOut(
+                        animationSpec = tween(
                             300
                         )
                     ) +
-                            androidx.compose.animation.scaleOut(
+                            scaleOut(
                                 targetScale = 0.95f,
-                                animationSpec = androidx.compose.animation.core.tween(300)
+                                animationSpec = tween(300)
                             )
                 }
             ) {
-                com.sg.taskspace.ui.screens.InsightsScreen(
-                    viewModel = viewModel,
+                InsightsScreen(
+                    viewModel = taskViewModel,
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
             composable(
                 route = "settings",
                 enterTransition = {
-                    androidx.compose.animation.fadeIn(
-                        animationSpec = androidx.compose.animation.core.tween(300)
-                    ) + androidx.compose.animation.slideInHorizontally(
+                    fadeIn(
+                        animationSpec = tween(300)
+                    ) + slideInHorizontally(
                         initialOffsetX = { it },
-                        animationSpec = androidx.compose.animation.core.tween(300)
+                        animationSpec = tween(300)
                     )
                 },
                 exitTransition = {
-                    androidx.compose.animation.fadeOut(
-                        animationSpec = androidx.compose.animation.core.tween(300)
-                    ) + androidx.compose.animation.slideOutHorizontally(
+                    fadeOut(
+                        animationSpec = tween(300)
+                    ) + slideOutHorizontally(
                         targetOffsetX = { it },
-                        animationSpec = androidx.compose.animation.core.tween(300)
+                        animationSpec = tween(300)
                     )
                 },
                 popEnterTransition = {
-                    androidx.compose.animation.fadeIn(
-                        animationSpec = androidx.compose.animation.core.tween(300)
-                    ) + androidx.compose.animation.slideInHorizontally(
+                    fadeIn(
+                        animationSpec = tween(300)
+                    ) + slideInHorizontally(
                         initialOffsetX = { -it },
-                        animationSpec = androidx.compose.animation.core.tween(300)
+                        animationSpec = tween(300)
                     )
                 },
                 popExitTransition = {
-                    androidx.compose.animation.fadeOut(
-                        animationSpec = androidx.compose.animation.core.tween(300)
-                    ) + androidx.compose.animation.slideOutHorizontally(
+                    fadeOut(
+                        animationSpec = tween(300)
+                    ) + slideOutHorizontally(
                         targetOffsetX = { -it },
-                        animationSpec = androidx.compose.animation.core.tween(300)
+                        animationSpec = tween(300)
                     )
                 }
             ) {
-                com.sg.taskspace.ui.screens.SettingsScreen(
-                    viewModel = viewModel,
+                SettingsScreen(
+                    viewModel = taskViewModel,
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
