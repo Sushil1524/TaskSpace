@@ -22,6 +22,10 @@ class HabitRepository(private val habitDao: HabitDao) {
         return habitDao.getHabitLogsForDate(date)
     }
 
+    fun getAllLogsForHabit(habitId: String): Flow<List<HabitLog>> {
+        return habitDao.getAllLogsForHabit(habitId)
+    }
+
     suspend fun insertHabitLog(log: HabitLog) {
         habitDao.insertHabitLog(log)
     }

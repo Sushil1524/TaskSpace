@@ -17,7 +17,11 @@ import androidx.compose.ui.unit.dp
 import com.sg.taskspace.data.Habit
 import com.sg.taskspace.data.HabitLog
 import com.sg.taskspace.ui.viewmodel.HabitViewModel
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,6 +31,7 @@ fun HabitScreen(
 ) {
     val habits by viewModel.habits.collectAsState()
     val logs by viewModel.logsForSelectedDate.collectAsState()
+    val habitStats by viewModel.habitStats.collectAsState()
     val selectedDate by viewModel.selectedDate.collectAsState()
     
     var showAddDialog by remember { mutableStateOf(false) }
@@ -77,10 +82,12 @@ fun HabitScreen(
             items(habits) { habit ->
                 val log = logs.find { it.habitId == habit.id }
                 val isCompleted = log?.isCompleted == true
+                val stats = habitStats[habit.id]
 
                 HabitCard(
                     habit = habit,
                     isCompleted = isCompleted,
+                    stats = stats,
                     onToggle = { viewModel.toggleHabitCompletion(habit, selectedDate, logs) },
                     onDelete = { viewModel.deleteHabit(habit) }
                 )
@@ -128,26 +135,49 @@ fun HabitScreen(
 }
 
 @Composable
-fun HabitCard(habit: Habit, isCompleted: Boolean, onToggle: () -> Unit, onDelete: () -> Unit) {
+fun HabitCard(habit: Habit, isCompleted: Boolean, stats: HabitViewModel.HabitStats?, onToggle: () -> Unit, onDelete: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(
-                checked = isCompleted,
-                onCheckedChange = { onToggle() }
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = habit.name, style = MaterialTheme.typography.titleMedium)
-                Text(text = habit.frequency, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                    checked = isCompleted,
+                    onCheckedChange = { onToggle() }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = habit.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(text = habit.frequency, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                }
             }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+            if (stats != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text("Current Streak", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("${stats.currentStreak} Days", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                    }
+                    Column {
+                        Text("Max Streak", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("${stats.maxStreak} Days", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    }
+                    Column {
+                        Text("Added On", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        val dateAdded = Instant.ofEpochMilli(stats.createdAt).atZone(ZoneId.systemDefault()).toLocalDate()
+                        Text(dateAdded.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT)), style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
             }
         }
     }

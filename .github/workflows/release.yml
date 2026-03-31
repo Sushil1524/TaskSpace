@@ -3,7 +3,8 @@ name: Android Release
 on:
   workflow_dispatch:
   push:
-    branches: [ "main" ]
+    tags:
+      - 'v*'
 
 jobs:
   build_and_release:
@@ -26,9 +27,15 @@ jobs:
       - name: Build Release APK
         run: ./gradlew assembleRelease
 
-      - name: Rename APK
+      - name: Find and Rename APK
         run: |
-          mv app/build/outputs/apk/release/app-release-unsigned.apk app/build/outputs/apk/release/TaskSpace-release.apk
+          APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          if [ -n "$APK_PATH" ]; then
+            mv "$APK_PATH" app/build/outputs/apk/release/TaskSpace-release.apk
+          else
+            echo "No APK found!"
+            exit 1
+          fi
 
       - name: Upload APK as artifact
         uses: actions/upload-artifact@v4

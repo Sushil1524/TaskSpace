@@ -134,7 +134,7 @@ fun SettingsScreen(
             SettingsItem(
                 icon = Icons.Default.Info,
                 title = "Version",
-                subtitle = "1.1.1",
+                subtitle = "1.2.2",
                 onClick = { }
             )
         }

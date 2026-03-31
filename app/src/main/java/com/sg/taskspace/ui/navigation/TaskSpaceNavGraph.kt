@@ -129,25 +129,41 @@ fun TaskSpaceNavGraph(
             ) {
                 AchievementsScreen(
                     viewModel = achievementsViewModel,
-                    onNavigateBack = { navController.popBackStack() }
+                    onNavigateBack = { 
+                        if (navController.previousBackStackEntry != null) {
+                            navController.popBackStack()
+                        }
+                    }
                 )
             }
             composable("habits") {
                 HabitScreen(
                     viewModel = habitViewModel,
-                    onNavigateBack = { navController.popBackStack() }
+                    onNavigateBack = { 
+                        if (navController.previousBackStackEntry != null) {
+                            navController.popBackStack()
+                        }
+                    }
                 )
             }
             composable("goals") {
                 GoalScreen(
                     viewModel = goalViewModel,
-                    onNavigateBack = { navController.popBackStack() }
+                    onNavigateBack = { 
+                        if (navController.previousBackStackEntry != null) {
+                            navController.popBackStack()
+                        }
+                    }
                 )
             }
             composable("journal") {
                 JournalScreen(
                     viewModel = journalViewModel,
-                    onNavigateBack = { navController.popBackStack() }
+                    onNavigateBack = { 
+                        if (navController.previousBackStackEntry != null) {
+                            navController.popBackStack()
+                        }
+                    }
                 )
             }
             composable("task_detail/{taskId}") { backStackEntry ->
@@ -156,7 +172,11 @@ fun TaskSpaceNavGraph(
                     TaskDetailScreen(
                         taskId = taskId,
                         viewModel = taskViewModel,
-                        onNavigateBack = { navController.popBackStack() }
+                        onNavigateBack = { 
+                        if (navController.previousBackStackEntry != null) {
+                            navController.popBackStack()
+                        }
+                    }
                     )
                 }
             }
@@ -209,7 +229,11 @@ fun TaskSpaceNavGraph(
             ) {
                 WeeklyTasksScreen(
                     viewModel = taskViewModel,
-                    onNavigateBack = { navController.popBackStack() }
+                    onNavigateBack = { 
+                        if (navController.previousBackStackEntry != null) {
+                            navController.popBackStack()
+                        }
+                    }
                 )
             }
             composable(
@@ -261,7 +285,11 @@ fun TaskSpaceNavGraph(
             ) {
                 HistoryScreen(
                     viewModel = taskViewModel,
-                    onNavigateBack = { navController.popBackStack() }
+                    onNavigateBack = { 
+                        if (navController.previousBackStackEntry != null) {
+                            navController.popBackStack()
+                        }
+                    }
                 )
             }
             composable(
@@ -313,7 +341,11 @@ fun TaskSpaceNavGraph(
             ) {
                 InsightsScreen(
                     viewModel = taskViewModel,
-                    onNavigateBack = { navController.popBackStack() }
+                    onNavigateBack = { 
+                        if (navController.previousBackStackEntry != null) {
+                            navController.popBackStack()
+                        }
+                    }
                 )
             }
             composable(
@@ -353,7 +385,11 @@ fun TaskSpaceNavGraph(
             ) {
                 SettingsScreen(
                     viewModel = taskViewModel,
-                    onNavigateBack = { navController.popBackStack() }
+                    onNavigateBack = { 
+                        if (navController.previousBackStackEntry != null) {
+                            navController.popBackStack()
+                        }
+                    }
                 )
             }
         }
