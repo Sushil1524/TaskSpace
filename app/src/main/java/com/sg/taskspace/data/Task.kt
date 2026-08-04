@@ -15,6 +15,11 @@ data class Task(
     @SerializedName("priority") val priority: String = "Medium", // "High", "Medium", "Low"
     @SerializedName("isCompleted") val isCompleted: Boolean = false,
 
+    // Organization
+    @SerializedName("projectId") val projectId: String? = null, // ID of the associated Project
+    @SerializedName("tags") val tags: String = "", // Comma-separated tags e.g. "#urgent,#design"
+    @SerializedName("estimatedMinutes") val estimatedMinutes: Int = 0, // 0 means not set
+
     // Scheduling & Recurrence
     @SerializedName("createdForDate") val createdForDate: String, // YYYY-MM-DD (The date this task belongs to)
     @SerializedName("time") val time: String? = null, // HH:mm (Optional time)

@@ -54,6 +54,30 @@ class TaskViewModel(
         }
     }
 
+    fun saveThemeMode(themeMode: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateThemeMode(themeMode)
+        }
+    }
+
+    fun saveFontFamily(fontFamily: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateFontFamily(fontFamily)
+        }
+    }
+
+    fun saveSecureBackupEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateSecureBackupEnabled(enabled)
+        }
+    }
+
+    fun saveNotificationsEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateNotificationsEnabled(enabled)
+        }
+    }
+
     fun completeOnboarding() {
         viewModelScope.launch {
             userPreferencesRepository.setOnboardingCompleted(true)
@@ -72,7 +96,7 @@ class TaskViewModel(
     private val _selectedDate = MutableStateFlow(currentDate)
     val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
 
-    data class DayStats(val date: LocalDate, val totalTasks: Int, val completedTasks: Int)
+    data class DayStats(val date: LocalDate, val totalTasks: Int, val completedTasks: Int, val tasks: List<Task> = emptyList())
 
     // Reflection Text
     private val _reflectionText = MutableStateFlow("")
@@ -132,7 +156,8 @@ class TaskViewModel(
                 stats.add(DayStats(
                     date = currentDate,
                     totalTasks = dailyTasks.size,
-                    completedTasks = dailyTasks.count { it.isCompleted }
+                    completedTasks = dailyTasks.count { it.isCompleted },
+                    tasks = dailyTasks
                 ))
             }
             stats
@@ -201,7 +226,8 @@ class TaskViewModel(
                 stats.add(DayStats(
                     date = currentDate,
                     totalTasks = dailyTasks.size,
-                    completedTasks = dailyTasks.count { it.isCompleted }
+                    completedTasks = dailyTasks.count { it.isCompleted },
+                    tasks = dailyTasks
                 ))
             }
             stats
@@ -312,7 +338,18 @@ class TaskViewModel(
         }
     }
 
-    fun addTask(title: String, notes: String, priority: String, category: String, repeat: String = "None", date: LocalDate? = null) {
+    fun addTask(
+        title: String,
+        notes: String,
+        priority: String,
+        category: String,
+        repeat: String = "None",
+        date: LocalDate? = null,
+        estimatedMinutes: Int = 0,
+        projectId: String? = null,
+        tags: String = "",
+        time: String? = null
+    ) {
         viewModelScope.launch {
             val targetDate = date ?: _selectedDate.value
             val task = Task(
@@ -321,7 +358,11 @@ class TaskViewModel(
                 priority = priority,
                 category = category,
                 createdForDate = targetDate.format(DateTimeFormatter.ISO_DATE),
-                repeat = repeat
+                repeat = repeat,
+                estimatedMinutes = estimatedMinutes,
+                projectId = projectId,
+                tags = tags,
+                time = time
             )
             taskRepository.insertTask(task)
         }

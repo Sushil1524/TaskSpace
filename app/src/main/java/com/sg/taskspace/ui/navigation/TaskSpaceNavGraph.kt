@@ -25,6 +25,7 @@ import com.sg.taskspace.ui.viewmodel.AchievementsViewModel
 import com.sg.taskspace.ui.viewmodel.HabitViewModel
 import com.sg.taskspace.ui.viewmodel.GoalViewModel
 import com.sg.taskspace.ui.viewmodel.JournalViewModel
+import com.sg.taskspace.ui.viewmodel.ProjectViewModel
 import com.sg.taskspace.ui.screens.HomeScreen
 import com.sg.taskspace.ui.screens.TaskDetailScreen
 import com.sg.taskspace.ui.screens.InsightsScreen
@@ -34,6 +35,8 @@ import com.sg.taskspace.ui.screens.SettingsScreen
 import com.sg.taskspace.ui.screens.HabitScreen
 import com.sg.taskspace.ui.screens.GoalScreen
 import com.sg.taskspace.ui.screens.JournalScreen
+import com.sg.taskspace.ui.screens.AddTaskScreen
+import com.sg.taskspace.ui.screens.ProjectsScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,6 +49,7 @@ fun TaskSpaceNavGraph(
     val habitViewModel: HabitViewModel = viewModel(factory = HabitViewModel.Factory)
     val goalViewModel: GoalViewModel = viewModel(factory = GoalViewModel.Factory)
     val journalViewModel: JournalViewModel = viewModel(factory = JournalViewModel.Factory)
+    val projectViewModel: ProjectViewModel = viewModel(factory = ProjectViewModel.Factory)
 
     val userPreferences by taskViewModel.userPreferences.collectAsState()
     val currentPrefs = userPreferences
@@ -85,7 +89,39 @@ fun TaskSpaceNavGraph(
                     onSettingsClick = { navController.navigate("settings") },
                     onHabitsClick = { navController.navigate("habits") },
                     onGoalsClick = { navController.navigate("goals") },
-                    onJournalClick = { navController.navigate("journal") }
+                    onJournalClick = { navController.navigate("journal") },
+                    onProjectsClick = { navController.navigate("projects") },
+                    onAddTaskClick = { navController.navigate("add_task") }
+                )
+            }
+            composable(
+                route = "add_task",
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300)) }
+            ) {
+                AddTaskScreen(
+                    viewModel = taskViewModel,
+                    projectViewModel = projectViewModel,
+                    onNavigateBack = {
+                        if (navController.previousBackStackEntry != null) navController.popBackStack()
+                    }
+                )
+            }
+            composable(
+                route = "projects",
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300)) + fadeOut(animationSpec = tween(300)) }
+            ) {
+                ProjectsScreen(
+                    projectViewModel = projectViewModel,
+                    taskViewModel = taskViewModel,
+                    onNavigateBack = {
+                        if (navController.previousBackStackEntry != null) navController.popBackStack()
+                    }
                 )
             }
             composable(
@@ -233,7 +269,8 @@ fun TaskSpaceNavGraph(
                         if (navController.previousBackStackEntry != null) {
                             navController.popBackStack()
                         }
-                    }
+                    },
+                    onAddTaskClick = { navController.navigate("add_task") }
                 )
             }
             composable(

@@ -1,20 +1,19 @@
 package com.sg.taskspace.ui.screens
 
+import android.Manifest
 import android.net.Uri
+import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Backup
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Restore
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
@@ -35,6 +34,25 @@ fun SettingsScreen(
     val userPreferences by viewModel.userPreferences.collectAsState()
     val context = LocalContext.current
     var showNameDialog by remember { mutableStateOf(false) }
+    var showThemeDialog by remember { mutableStateOf(false) }
+    var showFontDialog by remember { mutableStateOf(false) }
+
+    val currentTheme = userPreferences?.themeMode ?: "AMOLED Dark"
+    val currentFont = userPreferences?.fontFamily ?: "Default"
+    val isSecureBackup = userPreferences?.isSecureBackupEnabled ?: true
+    val notificationsEnabled = userPreferences?.notificationsEnabled ?: false
+
+    // Notification permission launcher (Android 13+)
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        viewModel.saveNotificationsEnabled(granted)
+        Toast.makeText(
+            context,
+            if (granted) "Notifications enabled!" else "Notifications permission denied.",
+            Toast.LENGTH_SHORT
+        ).show()
+    }
 
     // Export Launcher
     val exportLauncher = rememberLauncherForActivityResult(
@@ -66,20 +84,91 @@ fun SettingsScreen(
         }
     }
 
+    // Theme Picker Dialog
+    if (showThemeDialog) {
+        val themes = listOf("AMOLED Dark", "Dark", "Light", "System")
+        AlertDialog(
+            onDismissRequest = { showThemeDialog = false },
+            title = { Text("Choose Theme", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    themes.forEach { theme ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.saveThemeMode(theme)
+                                    showThemeDialog = false
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(theme, style = MaterialTheme.typography.bodyLarge)
+                            if (currentTheme == theme) {
+                                Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showThemeDialog = false }) { Text("Cancel") }
+            },
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    // Font Picker Dialog
+    if (showFontDialog) {
+        val fonts = listOf("Default", "Rounded", "Serif", "Monospace")
+        AlertDialog(
+            onDismissRequest = { showFontDialog = false },
+            title = { Text("Choose Font", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    fonts.forEach { font ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.saveFontFamily(font)
+                                    showFontDialog = false
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(font, style = MaterialTheme.typography.bodyLarge)
+                            if (currentFont == font) {
+                                Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showFontDialog = false }) { Text("Cancel") }
+            },
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text("Settings", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -88,7 +177,7 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            // Profile Section
+            // ── Profile ──
             SettingsSectionTitle("Profile")
             SettingsItem(
                 icon = Icons.Default.Person,
@@ -98,74 +187,130 @@ fun SettingsScreen(
                 trailingIcon = Icons.Default.Edit
             )
 
-            HorizontalDivider(
-                modifier = Modifier.padding(vertical = 16.dp),
-                thickness = DividerDefaults.Thickness,
-                color = DividerDefaults.color
+            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+            // ── Appearance ──
+            SettingsSectionTitle("Appearance")
+            SettingsItem(
+                icon = Icons.Default.Palette,
+                title = "Theme",
+                subtitle = currentTheme,
+                onClick = { showThemeDialog = true },
+                trailingIcon = Icons.Default.ChevronRight
+            )
+            SettingsItem(
+                icon = Icons.Default.TextFields,
+                title = "Font",
+                subtitle = currentFont,
+                onClick = { showFontDialog = true },
+                trailingIcon = Icons.Default.ChevronRight
             )
 
-            // Data Section
-            SettingsSectionTitle("Data")
+            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+            // ── Notifications ──
+            SettingsSectionTitle("Notifications")
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Icon(Icons.Default.Notifications, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Column {
+                        Text("Task Reminders", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                        Text("Receive notifications for scheduled tasks", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                Switch(
+                    checked = notificationsEnabled,
+                    onCheckedChange = { enabled ->
+                        if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        } else {
+                            viewModel.saveNotificationsEnabled(enabled)
+                        }
+                    }
+                )
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+            // ── Data & Backup ──
+            SettingsSectionTitle("Data & Backup")
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Column {
+                        Text("Secure Backup", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                        Text("Encrypt backup files for enhanced privacy", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                Switch(
+                    checked = isSecureBackup,
+                    onCheckedChange = { viewModel.saveSecureBackupEnabled(it) }
+                )
+            }
             SettingsItem(
                 icon = Icons.Default.Backup,
                 title = "Backup Data",
-                subtitle = "Export tasks, journal, habits, goals, and settings to a JSON file",
-                onClick = { 
-                    exportLauncher.launch("taskspace_backup_${System.currentTimeMillis()}.json")
-                }
+                subtitle = "Export tasks, journal, habits, goals & projects to a JSON file",
+                onClick = { exportLauncher.launch("taskspace_backup_${System.currentTimeMillis()}.json") }
             )
             SettingsItem(
                 icon = Icons.Default.Restore,
                 title = "Restore Data",
-                subtitle = "Import tasks, journal, habits, goals, and settings from a JSON file",
-                onClick = { 
-                    importLauncher.launch(arrayOf("application/json"))
-                }
+                subtitle = "Import tasks, journal, habits, goals & projects from a JSON file",
+                onClick = { importLauncher.launch(arrayOf("application/json")) }
             )
 
-            HorizontalDivider(
-                modifier = Modifier.padding(vertical = 16.dp),
-                thickness = DividerDefaults.Thickness,
-                color = DividerDefaults.color
-            )
+            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
-            // About Section
+            // ── About ──
             SettingsSectionTitle("About")
             SettingsItem(
                 icon = Icons.Default.Info,
                 title = "Version",
-                subtitle = "v1.2.3",
+                subtitle = "v1.3.0 — TaskSpace",
                 onClick = { }
             )
         }
     }
 
+    // Name Edit Dialog
     if (showNameDialog) {
         var newName by remember { mutableStateOf(userPreferences?.userName ?: "") }
         AlertDialog(
             onDismissRequest = { showNameDialog = false },
-            title = { Text("Edit Name") },
+            title = { Text("Edit Name", fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = newName,
                     onValueChange = { newName = it },
                     label = { Text("Name") },
-                    singleLine = true
+                    singleLine = true,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
+                Button(onClick = {
                     viewModel.saveUserName(newName.ifBlank { "User" })
                     showNameDialog = false
-                }) {
-                    Text("Save")
-                }
+                }) { Text("Save") }
             },
             dismissButton = {
-                TextButton(onClick = { showNameDialog = false }) {
-                    Text("Cancel")
-                }
-            }
+                TextButton(onClick = { showNameDialog = false }) { Text("Cancel") }
+            },
+            shape = RoundedCornerShape(20.dp)
         )
     }
 }
@@ -175,6 +320,7 @@ fun SettingsSectionTitle(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(bottom = 8.dp)
     )
@@ -195,31 +341,14 @@ fun SettingsItem(
             .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(24.dp)
-        )
+        Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Text(text = title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+            Text(text = subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (trailingIcon != null) {
-            Icon(
-                imageVector = trailingIcon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Icon(imageVector = trailingIcon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

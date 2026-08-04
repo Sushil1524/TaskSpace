@@ -1,7 +1,7 @@
 package com.sg.taskspace.ui.screens
 
 import com.sg.taskspace.data.Task
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,10 +14,12 @@ import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Loop
 import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material3.*
@@ -52,7 +54,9 @@ fun HomeScreen(
     onSettingsClick: () -> Unit,
     onHabitsClick: () -> Unit,
     onGoalsClick: () -> Unit,
-    onJournalClick: () -> Unit
+    onJournalClick: () -> Unit,
+    onProjectsClick: () -> Unit,
+    onAddTaskClick: () -> Unit
 ) {
     val tasks by viewModel.currentDisplayTasks.collectAsState()
     val formattedDate = viewModel.formattedDate
@@ -61,7 +65,7 @@ fun HomeScreen(
     val weeklyStats by viewModel.weeklyStats.collectAsState()
     val weeklyTasks by viewModel.weeklyTasks.collectAsState()
 
-    var showBottomSheet by remember { mutableStateOf(false) }
+    var showFinishedSection by remember { mutableStateOf(true) }
     var selectedTask by remember { mutableStateOf<Task?>(null) }
     var selectedDayForDialog by remember { mutableStateOf<LocalDate?>(null) }
 
@@ -94,9 +98,7 @@ fun HomeScreen(
         }.filter { task ->
             if (task.repeat != "None") {
                 weeklyTasks.none { it.parentId == task.id && it.createdForDate == dateIso }
-            } else {
-                true
-            }
+            } else true
         }
 
         val stats = weeklyStats.find { it.date == date }
@@ -112,15 +114,6 @@ fun HomeScreen(
             }
         )
     }
-    if (showBottomSheet) {
-        com.sg.taskspace.ui.components.AddTaskBottomSheet(
-            onDismissRequest = { showBottomSheet = false },
-            onSaveTask = { title, notes, priority, category, repeat ->
-                viewModel.addTask(title, notes, priority, category, repeat)
-                showBottomSheet = false
-            }
-        )
-    }
 
     Scaffold(
         topBar = {
@@ -132,7 +125,7 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 12.dp)
-                        .statusBarsPadding(), // Handle status bar overlap
+                        .statusBarsPadding(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -161,7 +154,7 @@ fun HomeScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { showBottomSheet = true },
+                onClick = onAddTaskClick,
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 shape = CircleShape
@@ -176,38 +169,36 @@ fun HomeScreen(
                 .padding(innerPadding)
                 .fillMaxSize()
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = formattedDate, // e.g., Friday, November 28, 2025
+                        text = formattedDate,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onBackground
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = weekNumber, // e.g., Week 48
+                        text = weekNumber,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            // 3. Motivation/Stats Card
+            // Daily Progress Card
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     shape = RoundedCornerShape(16.dp)
                 ) {
-                    Column(modifier = Modifier.padding(24.dp)) {
+                    Column(modifier = Modifier.padding(20.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
@@ -224,61 +215,51 @@ fun HomeScreen(
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         }
-                        
                         Spacer(modifier = Modifier.height(8.dp))
-                        
+
                         val total = tasks.size
                         val done = tasks.count { it.isCompleted }
-                        val motivation = if (total == 0) "No tasks yet. Add one!" 
-                                         else if (done == total) "All tasks completed! Great job!"
-                                         else "You've completed $done out of $total tasks."
-
+                        val motivation = when {
+                            total == 0 -> "No tasks yet. Add one!"
+                            done == total -> "All tasks completed! Great job! 🎉"
+                            else -> "You've completed $done out of $total tasks."
+                        }
                         Text(
                             text = motivation,
-                            style = MaterialTheme.typography.titleLarge,
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
-                        Spacer(modifier = Modifier.height(24.dp))
-                        
-                        // Stats Row
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             val progress = if (total > 0) (done.toFloat() / total * 100).toInt() else 0
-                            
                             StatColumn("Total", total.toString())
                             StatColumn("Done", done.toString())
                             StatColumn("Progress", "$progress%")
                         }
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        // Progress Bar
+                        Spacer(modifier = Modifier.height(12.dp))
                         val progressFraction = if (total > 0) done.toFloat() / total else 0f
                         LinearProgressIndicator(
                             progress = { progressFraction },
                             modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
                             color = MaterialTheme.colorScheme.primary,
-                            trackColor = MaterialTheme.colorScheme.background // Darker track
+                            trackColor = MaterialTheme.colorScheme.background
                         )
                     }
                 }
             }
 
-            // 3.5 Quick Actions (Habits, Goals, Journal)
+            // Quick Actions: Habits, Goals, Journal, Projects
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     QuickActionCard("Habits", Icons.Default.Loop, Modifier.weight(1f), onHabitsClick)
                     QuickActionCard("Goals", Icons.Default.Flag, Modifier.weight(1f), onGoalsClick)
                     QuickActionCard("Journal", Icons.Default.Book, Modifier.weight(1f), onJournalClick)
+                    QuickActionCard("Projects", Icons.Default.FolderOpen, Modifier.weight(1f), onProjectsClick)
                 }
             }
 
-            // 4. Weekly Progress
+            // Weekly Progress
             item {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                     Text(
@@ -286,30 +267,31 @@ fun HomeScreen(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground,
-                        modifier = Modifier.padding(bottom = 16.dp)
+                        modifier = Modifier.padding(bottom = 12.dp)
                     )
                     WeeklyProgressRow(
                         selectedDate = selectedDate,
                         weeklyStats = weeklyStats,
-                        onDateSelected = { /* Do nothing to main view */ },
+                        onDateSelected = { },
                         onDayClick = { date -> selectedDayForDialog = date }
                     )
                 }
             }
+
             item {
                 Button(
-                    onClick = { onWeeklyTasksClick() },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
+                    onClick = onWeeklyTasksClick,
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Icon(Icons.Default.CalendarMonth, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Set Up Weekly Plan", style = MaterialTheme.typography.titleMedium)
+                    Text("Set Up Weekly Plan", style = MaterialTheme.typography.titleSmall)
                 }
             }
 
-            // 5. Today's Task Section
+            // Today's Tasks header
             item {
                 Text(
                     text = "Today's Tasks",
@@ -319,16 +301,18 @@ fun HomeScreen(
                 )
             }
 
-            if (tasks.isEmpty()) {
+            // Active + Finished sections
+            val activeTasks = tasks.filter { !it.isCompleted }
+            val completedTasks = tasks.filter { it.isCompleted }
+
+            if (activeTasks.isEmpty() && completedTasks.isEmpty()) {
                 item {
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 32.dp, bottom = 64.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 32.dp, bottom = 64.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Icon(
-                            imageVector = Icons.Default.CheckCircle, // Using CheckCircle for thicker look
+                            imageVector = Icons.Default.CheckCircle,
                             contentDescription = null,
                             modifier = Modifier.size(80.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
@@ -343,16 +327,54 @@ fun HomeScreen(
                     }
                 }
             } else {
-                items(tasks) { task ->
+                // Active tasks first
+                items(activeTasks) { task ->
                     TaskCard(
-                        task = task, 
+                        task = task,
                         onCheckedChange = { viewModel.toggleTaskCompletion(task) },
                         onClick = { selectedTask = task },
                         onDelete = { viewModel.deleteTask(task) }
                     )
                 }
+
+                // Finished section (collapsible)
+                if (completedTasks.isNotEmpty()) {
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showFinishedSection = !showFinishedSection }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Finished (${completedTasks.size})",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Icon(
+                                imageVector = if (showFinishedSection) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    if (showFinishedSection) {
+                        items(completedTasks) { task ->
+                            TaskCard(
+                                task = task,
+                                onCheckedChange = { viewModel.toggleTaskCompletion(task) },
+                                onClick = { selectedTask = task },
+                                onDelete = { viewModel.deleteTask(task) }
+                            )
+                        }
+                    }
+                }
             }
-            
+
             item { Spacer(modifier = Modifier.height(80.dp)) }
         }
     }
@@ -361,17 +383,8 @@ fun HomeScreen(
 @Composable
 private fun StatColumn(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Text(text = value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        Text(text = label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -380,16 +393,16 @@ private fun StatColumn(label: String, value: String) {
 fun QuickActionCard(label: String, icon: ImageVector, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Card(
         onClick = onClick,
-        modifier = modifier.height(80.dp),
+        modifier = modifier.height(76.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(14.dp)
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.primary)
+            Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
             Spacer(modifier = Modifier.height(4.dp))
             Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
         }

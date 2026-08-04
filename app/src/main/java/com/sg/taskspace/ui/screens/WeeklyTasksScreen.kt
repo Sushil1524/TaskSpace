@@ -7,27 +7,26 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
-
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sg.taskspace.data.Task
-import com.sg.taskspace.ui.viewmodel.TaskViewModel
 import com.sg.taskspace.ui.components.TaskCard
+import com.sg.taskspace.ui.viewmodel.TaskViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WeeklyTasksScreen(
     viewModel: TaskViewModel,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onAddTaskClick: () -> Unit
 ) {
     val weeklyTasks by viewModel.weeklyTasks.collectAsState()
     val selectedDate by viewModel.selectedDate.collectAsState()
     
     var currentTabDate by remember { mutableStateOf(selectedDate) }
-    
-    var showBottomSheet by remember { mutableStateOf(false) }
     var taskToEdit by remember { mutableStateOf<Task?>(null) }
 
     // Calculate week days starting from SUNDAY
@@ -52,18 +51,6 @@ fun WeeklyTasksScreen(
             true
         }
     }
-
-    if (showBottomSheet) {
-        com.sg.taskspace.ui.components.AddTaskBottomSheet(
-            onDismissRequest = { showBottomSheet = false },
-            onSaveTask = { title, notes, priority, category, repeat ->
-                // Add task for the SELECTED tab date
-                // Now passing the date explicitly, so we don't need to change VM state.
-                viewModel.addTask(title, notes, priority, category, repeat, currentTabDate)
-                showBottomSheet = false
-            }
-        )
-    }
     
     if (taskToEdit != null) {
         com.sg.taskspace.ui.components.TaskDetailDialog(
@@ -84,12 +71,13 @@ fun WeeklyTasksScreen(
         topBar = {
             Column {
                 TopAppBar(
-                    title = { Text("Weekly Plan") },
+                    title = { Text("Weekly Plan", fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
-                    }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
                 )
                 // Day Tabs
                 PrimaryScrollableTabRow(
@@ -118,12 +106,13 @@ fun WeeklyTasksScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { showBottomSheet = true },
+                onClick = onAddTaskClick,
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Task")
             }
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier

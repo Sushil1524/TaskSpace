@@ -15,54 +15,117 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-private val DarkColorScheme = darkColorScheme(
-    primary = PrimaryBlue,
-    secondary = SecondaryTeal,
-    tertiary = Pink80,
-    background = DarkBackground,
-    surface = DarkSurface,
-    onPrimary = Color.Black,
+// === AMOLED Dark Color Scheme (Pitch Black) ===
+private val AmoledDarkColorScheme = darkColorScheme(
+    primary = PrimaryIndigoDark,
+    onPrimary = Color.White,
+    primaryContainer = PrimaryIndigoContainer,
+    onPrimaryContainer = Color(0xFFE0E7FF),
+    secondary = SecondaryEmeraldDark,
     onSecondary = Color.Black,
+    secondaryContainer = SecondaryEmeraldContainer,
+    onSecondaryContainer = Color(0xFFD1FAE5),
+    tertiary = PriorityMedium,
     onTertiary = Color.Black,
+    background = AmoledBackground,
     onBackground = TextWhite,
+    surface = AmoledSurface,
     onSurface = TextWhite,
-    surfaceVariant = CardBackground,
-    onSurfaceVariant = TextGray
+    surfaceVariant = AmoledCard,
+    onSurfaceVariant = TextWhiteMuted,
+    outline = AmoledBorder,
+    error = PriorityHigh,
+    onError = Color.White,
+    errorContainer = PriorityHighContainer,
+    onErrorContainer = Color(0xFFFFE4E6)
 )
 
+// === Standard Dark Color Scheme ===
+private val DarkColorScheme = darkColorScheme(
+    primary = PrimaryIndigoDark,
+    onPrimary = Color.White,
+    primaryContainer = PrimaryIndigoContainer,
+    onPrimaryContainer = Color(0xFFE0E7FF),
+    secondary = SecondaryEmeraldDark,
+    onSecondary = Color.Black,
+    secondaryContainer = SecondaryEmeraldContainer,
+    onSecondaryContainer = Color(0xFFD1FAE5),
+    tertiary = PriorityMedium,
+    onTertiary = Color.Black,
+    background = DarkBackground,
+    onBackground = TextWhite,
+    surface = DarkSurface,
+    onSurface = TextWhite,
+    surfaceVariant = DarkCard,
+    onSurfaceVariant = TextWhiteMuted,
+    outline = DarkBorder,
+    error = PriorityHigh,
+    onError = Color.White,
+    errorContainer = PriorityHighContainer,
+    onErrorContainer = Color(0xFFFFE4E6)
+)
+
+// === Light Color Scheme ===
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
+    primary = PrimaryIndigo,
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFE0E7FF),
+    onPrimaryContainer = Color(0xFF3730A3),
+    secondary = SecondaryEmerald,
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFD1FAE5),
+    onSecondaryContainer = Color(0xFF065F46),
+    tertiary = PriorityMedium,
+    onTertiary = Color.White,
+    background = LightBackground,
+    onBackground = TextBlack,
+    surface = LightSurface,
+    onSurface = TextBlack,
+    surfaceVariant = LightCard,
+    onSurfaceVariant = TextBlackMuted,
+    outline = LightBorder,
+    error = PriorityHigh,
+    onError = Color.White,
+    errorContainer = Color(0xFFFFE4E6),
+    onErrorContainer = Color(0xFF7F1D1D)
 )
 
 @Composable
 fun TaskSpaceTheme(
-    darkTheme: Boolean = true, // Force Dark Theme for now to match design
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = false, // Disable dynamic color to enforce our design
+    themeMode: String = "AMOLED Dark",
+    fontFamily: String = "Default",
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
+    val isDark = themeMode != "Light"
+
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+        themeMode == "AMOLED Dark" -> AmoledDarkColorScheme
+        themeMode == "Dark" -> DarkColorScheme
+        themeMode == "Light" -> LightColorScheme
+        else -> {
+            // System Default: use Android dark/light
+            val isSystemDark = androidx.compose.foundation.isSystemInDarkTheme()
+            if (isSystemDark) DarkColorScheme else LightColorScheme
+        }
     }
+
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.background.toArgb() // Match background
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            window.statusBarColor = colorScheme.background.toArgb()
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDark
         }
     }
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography,
+        typography = getTypography(fontFamily),
         content = content
     )
 }

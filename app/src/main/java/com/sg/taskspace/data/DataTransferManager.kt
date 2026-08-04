@@ -18,6 +18,7 @@ data class BackupData(
     @SerializedName("habits") val habits: List<Habit>? = null,
     @SerializedName("habitLogs") val habitLogs: List<HabitLog>? = null,
     @SerializedName("goals") val goals: List<Goal>? = null,
+    @SerializedName("projects") val projects: List<Project>? = null,
     @SerializedName("userPreferences") val userPreferences: UserPreferences
 )
 
@@ -27,7 +28,8 @@ class DataTransferManager(
     private val journalRepository: JournalRepository,
     private val habitRepository: HabitRepository,
     private val goalRepository: GoalRepository,
-    private val userPreferencesRepository: UserPreferencesRepository
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val projectRepository: ProjectRepository
 ) {
     private val gson: Gson = GsonBuilder().setPrettyPrinting().create()
 
@@ -39,6 +41,7 @@ class DataTransferManager(
                 val habits = habitRepository.allHabits.first()
                 val habitLogs = habitRepository.allHabitLogs.first()
                 val goals = goalRepository.allGoals.first()
+                val projects = projectRepository.getAllProjectsSync()
                 val prefs = userPreferencesRepository.fetchInitialPreferences()
                 val backupData = BackupData(
                     tasks = tasks,
@@ -46,6 +49,7 @@ class DataTransferManager(
                     habits = habits,
                     habitLogs = habitLogs,
                     goals = goals,
+                    projects = projects,
                     userPreferences = prefs
                 )
                 val jsonString = gson.toJson(backupData)
@@ -96,12 +100,20 @@ class DataTransferManager(
                 backupData.goals.orEmpty().forEach { goal ->
                     goalRepository.insertGoal(goal)
                 }
-                
+
+                backupData.projects.orEmpty().forEach { project ->
+                    projectRepository.insertProject(project)
+                }
+
                 userPreferencesRepository.restorePreferences(
-                    backupData.userPreferences.userName,
-                    backupData.userPreferences.isOnboardingCompleted
+                    userName = backupData.userPreferences.userName,
+                    isOnboardingCompleted = backupData.userPreferences.isOnboardingCompleted,
+                    themeMode = backupData.userPreferences.themeMode,
+                    fontFamily = backupData.userPreferences.fontFamily,
+                    isSecureBackupEnabled = backupData.userPreferences.isSecureBackupEnabled,
+                    notificationsEnabled = backupData.userPreferences.notificationsEnabled
                 )
-                
+
                 Result.success(true)
             } catch (e: Exception) {
                 e.printStackTrace()
