@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider
@@ -36,10 +37,14 @@ fun SettingsScreen(
     var showNameDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
     var showFontDialog by remember { mutableStateOf(false) }
+    var showPaletteDialog by remember { mutableStateOf(false) }
+    var showAutoBackupDialog by remember { mutableStateOf(false) }
 
     val currentTheme = userPreferences?.themeMode ?: "AMOLED Dark"
     val currentFont = userPreferences?.fontFamily ?: "Default"
+    val currentPalette = userPreferences?.colorPalette ?: "Indigo"
     val isSecureBackup = userPreferences?.isSecureBackupEnabled ?: true
+    val autoBackupFrequency = userPreferences?.autoBackupFrequency ?: "Daily"
     val notificationsEnabled = userPreferences?.notificationsEnabled ?: false
 
     // Notification permission launcher (Android 13+)
@@ -156,6 +161,78 @@ fun SettingsScreen(
         )
     }
 
+    // Color Palette Dialog
+    if (showPaletteDialog) {
+        val palettes = listOf("Indigo", "Emerald", "Rose", "Amber", "Violet", "Teal")
+        AlertDialog(
+            onDismissRequest = { showPaletteDialog = false },
+            title = { Text("Color Palette", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    palettes.forEach { palette ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.saveColorPalette(palette)
+                                    showPaletteDialog = false
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(palette, style = MaterialTheme.typography.bodyLarge)
+                            if (currentPalette == palette) {
+                                Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showPaletteDialog = false }) { Text("Cancel") }
+            },
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    // Auto Backup Dialog
+    if (showAutoBackupDialog) {
+        val frequencies = listOf("Daily", "Weekly", "Off")
+        AlertDialog(
+            onDismissRequest = { showAutoBackupDialog = false },
+            title = { Text("Auto Backup Frequency", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    frequencies.forEach { freq ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.saveAutoBackupFrequency(freq)
+                                    showAutoBackupDialog = false
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(freq, style = MaterialTheme.typography.bodyLarge)
+                            if (autoBackupFrequency == freq) {
+                                Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showAutoBackupDialog = false }) { Text("Cancel") }
+            },
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -205,11 +282,18 @@ fun SettingsScreen(
                 onClick = { showFontDialog = true },
                 trailingIcon = Icons.Default.ChevronRight
             )
+            SettingsItem(
+                icon = Icons.Default.FormatPaint,
+                title = "Color Palette",
+                subtitle = currentPalette,
+                onClick = { showPaletteDialog = true },
+                trailingIcon = Icons.Default.ChevronRight
+            )
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
-            // ── Notifications ──
-            SettingsSectionTitle("Notifications")
+            // ── Notifications & Feedback ──
+            SettingsSectionTitle("Notifications & Feedback")
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -233,6 +317,25 @@ fun SettingsScreen(
                             viewModel.saveNotificationsEnabled(enabled)
                         }
                     }
+                )
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Column {
+                        Text("Haptic & Sound Effects", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                        Text("Play chimes & haptic vibration on task completion", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                Switch(
+                    checked = userPreferences?.soundEffectsEnabled ?: true,
+                    onCheckedChange = { viewModel.saveSoundEffectsEnabled(it) }
                 )
             }
 
@@ -260,8 +363,15 @@ fun SettingsScreen(
                 )
             }
             SettingsItem(
+                icon = Icons.Default.Autorenew,
+                title = "Auto Backup Frequency",
+                subtitle = userPreferences?.autoBackupFrequency ?: "Daily",
+                onClick = { showAutoBackupDialog = true },
+                trailingIcon = Icons.Default.ChevronRight
+            )
+            SettingsItem(
                 icon = Icons.Default.Backup,
-                title = "Backup Data",
+                title = "Backup Data Now",
                 subtitle = "Export tasks, journal, habits, goals & projects to a JSON file",
                 onClick = { exportLauncher.launch("taskspace_backup_${System.currentTimeMillis()}.json") }
             )

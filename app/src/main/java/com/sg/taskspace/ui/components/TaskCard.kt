@@ -12,11 +12,14 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -29,6 +32,8 @@ import com.sg.taskspace.ui.theme.PriorityLow
 import com.sg.taskspace.ui.theme.PriorityLowContainer
 import com.sg.taskspace.ui.theme.PriorityMedium
 import com.sg.taskspace.ui.theme.PriorityMediumContainer
+import com.sg.taskspace.util.AudioHapticHelper
+import com.sg.taskspace.util.TagStyleHelper
 
 @Composable
 fun TaskCard(
@@ -37,6 +42,9 @@ fun TaskCard(
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
+
     val priorityColor = when (task.priority) {
         "High" -> PriorityHigh
         "Medium" -> PriorityMedium
@@ -46,6 +54,11 @@ fun TaskCard(
         "High" -> PriorityHighContainer
         "Medium" -> PriorityMediumContainer
         else -> PriorityLowContainer
+    }
+
+    val tagsList = remember(task.tags) {
+        if (task.tags.isBlank()) emptyList()
+        else task.tags.split(",").map { it.trim() }.filter { it.isNotBlank() }
     }
 
     Card(
@@ -59,8 +72,8 @@ fun TaskCard(
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        // Priority accent bar on left edge
         Row(modifier = Modifier.fillMaxWidth()) {
+            // Priority accent bar on left edge
             Box(
                 modifier = Modifier
                     .width(4.dp)
@@ -87,7 +100,13 @@ fun TaskCard(
                             shape = CircleShape
                         )
                         .background(if (task.isCompleted) priorityColor else Color.Transparent)
-                        .clickable { onCheckedChange(!task.isCompleted) },
+                        .clickable {
+                            val nextState = !task.isCompleted
+                            if (nextState) {
+                                AudioHapticHelper.playTaskCompleteSoundAndHaptic(context, haptic)
+                            }
+                            onCheckedChange(nextState)
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     if (task.isCompleted) {
@@ -147,6 +166,35 @@ fun TaskCard(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontSize = 10.sp
                                 )
+                            }
+
+                            // Smart Tag chips with Icon
+                            for (tag in tagsList.take(2)) {
+                                val tagStyle = TagStyleHelper.getStyleForTag(tag)
+                                Surface(
+                                    color = tagStyle.color.copy(alpha = 0.15f),
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = tagStyle.icon,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(10.dp),
+                                            tint = tagStyle.color
+                                        )
+                                        Text(
+                                            text = tag,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = tagStyle.color,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
                             }
 
                             // Duration badge

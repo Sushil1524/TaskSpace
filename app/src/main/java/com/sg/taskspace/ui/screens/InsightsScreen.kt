@@ -199,7 +199,7 @@ fun InsightsScreen(
                     InsightHighlightCard(
                         modifier = Modifier.weight(1f),
                         label = "🎯 Focus",
-                        value = data.needsFocus.take(6),
+                        value = data.needsFocus,
                         subtitle = "needs work",
                         iconColor = PriorityHigh,
                         bgColor = PriorityHigh.copy(alpha = 0.1f)
@@ -318,7 +318,15 @@ private fun InsightHighlightCard(
         Column(modifier = Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(label, style = MaterialTheme.typography.labelSmall, color = iconColor, fontWeight = FontWeight.Bold, fontSize = 9.sp, textAlign = TextAlign.Center)
             Spacer(modifier = Modifier.height(4.dp))
-            Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = iconColor, textAlign = TextAlign.Center)
+            Text(
+                text = value,
+                style = if (value.length > 6) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color = iconColor,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
             Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         }
     }

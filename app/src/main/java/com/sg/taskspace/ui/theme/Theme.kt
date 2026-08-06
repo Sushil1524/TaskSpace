@@ -2,6 +2,7 @@ package com.sg.taskspace.ui.theme
 
 import android.app.Activity
 import android.os.Build
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -15,103 +16,137 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-// === AMOLED Dark Color Scheme (Pitch Black) ===
-private val AmoledDarkColorScheme = darkColorScheme(
-    primary = PrimaryIndigoDark,
-    onPrimary = Color.White,
-    primaryContainer = PrimaryIndigoContainer,
-    onPrimaryContainer = Color(0xFFE0E7FF),
-    secondary = SecondaryEmeraldDark,
-    onSecondary = Color.Black,
-    secondaryContainer = SecondaryEmeraldContainer,
-    onSecondaryContainer = Color(0xFFD1FAE5),
-    tertiary = PriorityMedium,
-    onTertiary = Color.Black,
-    background = AmoledBackground,
-    onBackground = TextWhite,
-    surface = AmoledSurface,
-    onSurface = TextWhite,
-    surfaceVariant = AmoledCard,
-    onSurfaceVariant = TextWhiteMuted,
-    outline = AmoledBorder,
-    error = PriorityHigh,
-    onError = Color.White,
-    errorContainer = PriorityHighContainer,
-    onErrorContainer = Color(0xFFFFE4E6)
-)
+fun buildColorScheme(themeMode: String, colorPalette: String, isSystemDark: Boolean): ColorScheme {
+    val isDark = themeMode != "Light" && (themeMode != "System" || isSystemDark)
 
-// === Standard Dark Color Scheme ===
-private val DarkColorScheme = darkColorScheme(
-    primary = PrimaryIndigoDark,
-    onPrimary = Color.White,
-    primaryContainer = PrimaryIndigoContainer,
-    onPrimaryContainer = Color(0xFFE0E7FF),
-    secondary = SecondaryEmeraldDark,
-    onSecondary = Color.Black,
-    secondaryContainer = SecondaryEmeraldContainer,
-    onSecondaryContainer = Color(0xFFD1FAE5),
-    tertiary = PriorityMedium,
-    onTertiary = Color.Black,
-    background = DarkBackground,
-    onBackground = TextWhite,
-    surface = DarkSurface,
-    onSurface = TextWhite,
-    surfaceVariant = DarkCard,
-    onSurfaceVariant = TextWhiteMuted,
-    outline = DarkBorder,
-    error = PriorityHigh,
-    onError = Color.White,
-    errorContainer = PriorityHighContainer,
-    onErrorContainer = Color(0xFFFFE4E6)
-)
+    val (primaryColor, containerColor) = when (colorPalette) {
+        "Emerald" -> if (isDark) Color(0xFF34D399) to Color(0xFF065F46) else Color(0xFF10B981) to Color(0xFFD1FAE5)
+        "Rose" -> if (isDark) Color(0xFFFB7185) to Color(0xFF881337) else Color(0xFFF43F5E) to Color(0xFFFFE4E6)
+        "Amber" -> if (isDark) Color(0xFFFBBF24) to Color(0xFF78350F) else Color(0xFFF59E0B) to Color(0xFFFEF3C7)
+        "Violet" -> if (isDark) Color(0xFFA78BFA) to Color(0xFF4C1D95) else Color(0xFF8B5CF6) to Color(0xFFEDE9FE)
+        "Teal" -> if (isDark) Color(0xFF2DD4BF) to Color(0xFF134E4A) else Color(0xFF14B8A6) to Color(0xFFCCFBF1)
+        else -> if (isDark) Color(0xFF818CF8) to Color(0xFF3730A3) else Color(0xFF6366F1) to Color(0xFFE0E7FF) // Indigo default
+    }
 
-// === Light Color Scheme ===
-private val LightColorScheme = lightColorScheme(
-    primary = PrimaryIndigo,
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFFE0E7FF),
-    onPrimaryContainer = Color(0xFF3730A3),
-    secondary = SecondaryEmerald,
-    onSecondary = Color.White,
-    secondaryContainer = Color(0xFFD1FAE5),
-    onSecondaryContainer = Color(0xFF065F46),
-    tertiary = PriorityMedium,
-    onTertiary = Color.White,
-    background = LightBackground,
-    onBackground = TextBlack,
-    surface = LightSurface,
-    onSurface = TextBlack,
-    surfaceVariant = LightCard,
-    onSurfaceVariant = TextBlackMuted,
-    outline = LightBorder,
-    error = PriorityHigh,
-    onError = Color.White,
-    errorContainer = Color(0xFFFFE4E6),
-    onErrorContainer = Color(0xFF7F1D1D)
-)
+    return when {
+        themeMode == "AMOLED Dark" -> darkColorScheme(
+            primary = primaryColor,
+            onPrimary = Color.White,
+            primaryContainer = containerColor,
+            onPrimaryContainer = Color.White,
+            secondary = SecondaryEmeraldDark,
+            onSecondary = Color.Black,
+            secondaryContainer = SecondaryEmeraldContainer,
+            onSecondaryContainer = Color(0xFFD1FAE5),
+            tertiary = PriorityMedium,
+            onTertiary = Color.Black,
+            background = AmoledBackground,
+            onBackground = TextWhite,
+            surface = AmoledSurface,
+            onSurface = TextWhite,
+            surfaceVariant = AmoledCard,
+            onSurfaceVariant = TextWhiteMuted,
+            outline = AmoledBorder,
+            error = PriorityHigh,
+            onError = Color.White,
+            errorContainer = PriorityHighContainer,
+            onErrorContainer = Color(0xFFFFE4E6)
+        )
+        themeMode == "Dark" -> darkColorScheme(
+            primary = primaryColor,
+            onPrimary = Color.White,
+            primaryContainer = containerColor,
+            onPrimaryContainer = Color.White,
+            secondary = SecondaryEmeraldDark,
+            onSecondary = Color.Black,
+            secondaryContainer = SecondaryEmeraldContainer,
+            onSecondaryContainer = Color(0xFFD1FAE5),
+            tertiary = PriorityMedium,
+            onTertiary = Color.Black,
+            background = DarkBackground,
+            onBackground = TextWhite,
+            surface = DarkSurface,
+            onSurface = TextWhite,
+            surfaceVariant = DarkCard,
+            onSurfaceVariant = TextWhiteMuted,
+            outline = DarkBorder,
+            error = PriorityHigh,
+            onError = Color.White,
+            errorContainer = PriorityHighContainer,
+            onErrorContainer = Color(0xFFFFE4E6)
+        )
+        themeMode == "Light" -> lightColorScheme(
+            primary = primaryColor,
+            onPrimary = Color.White,
+            primaryContainer = containerColor,
+            onPrimaryContainer = Color(0xFF1E1B4B),
+            secondary = SecondaryEmerald,
+            onSecondary = Color.White,
+            secondaryContainer = Color(0xFFD1FAE5),
+            onSecondaryContainer = Color(0xFF065F46),
+            tertiary = PriorityMedium,
+            onTertiary = Color.White,
+            background = LightBackground,
+            onBackground = TextBlack,
+            surface = LightSurface,
+            onSurface = TextBlack,
+            surfaceVariant = LightCard,
+            onSurfaceVariant = TextBlackMuted,
+            outline = LightBorder,
+            error = PriorityHigh,
+            onError = Color.White,
+            errorContainer = Color(0xFFFFE4E6),
+            onErrorContainer = Color(0xFF7F1D1D)
+        )
+        else -> { // System Default
+            if (isSystemDark) {
+                darkColorScheme(
+                    primary = primaryColor,
+                    onPrimary = Color.White,
+                    primaryContainer = containerColor,
+                    onPrimaryContainer = Color.White,
+                    background = DarkBackground,
+                    onBackground = TextWhite,
+                    surface = DarkSurface,
+                    onSurface = TextWhite,
+                    surfaceVariant = DarkCard,
+                    onSurfaceVariant = TextWhiteMuted
+                )
+            } else {
+                lightColorScheme(
+                    primary = primaryColor,
+                    onPrimary = Color.White,
+                    primaryContainer = containerColor,
+                    onPrimaryContainer = Color(0xFF1E1B4B),
+                    background = LightBackground,
+                    onBackground = TextBlack,
+                    surface = LightSurface,
+                    onSurface = TextBlack,
+                    surfaceVariant = LightCard,
+                    onSurfaceVariant = TextBlackMuted
+                )
+            }
+        }
+    }
+}
 
 @Composable
 fun TaskSpaceTheme(
     themeMode: String = "AMOLED Dark",
     fontFamily: String = "Default",
+    colorPalette: String = "Indigo",
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val isDark = themeMode != "Light"
+    val isSystemDark = androidx.compose.foundation.isSystemInDarkTheme()
 
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        themeMode == "AMOLED Dark" -> AmoledDarkColorScheme
-        themeMode == "Dark" -> DarkColorScheme
-        themeMode == "Light" -> LightColorScheme
-        else -> {
-            // System Default: use Android dark/light
-            val isSystemDark = androidx.compose.foundation.isSystemInDarkTheme()
-            if (isSystemDark) DarkColorScheme else LightColorScheme
-        }
+        else -> buildColorScheme(themeMode, colorPalette, isSystemDark)
     }
 
     val view = LocalView.current

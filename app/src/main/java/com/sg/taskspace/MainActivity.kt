@@ -21,8 +21,9 @@ class MainActivity : ComponentActivity() {
             val userPreferences by taskViewModel.userPreferences.collectAsState()
             val themeMode = userPreferences?.themeMode ?: "AMOLED Dark"
             val fontFamily = userPreferences?.fontFamily ?: "Default"
+            val colorPalette = userPreferences?.colorPalette ?: "Indigo"
 
-            TaskSpaceTheme(themeMode = themeMode, fontFamily = fontFamily) {
+            TaskSpaceTheme(themeMode = themeMode, fontFamily = fontFamily, colorPalette = colorPalette) {
                 TaskSpaceNavGraph(taskViewModel = taskViewModel)
             }
         }

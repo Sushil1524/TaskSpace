@@ -137,6 +137,48 @@ object AchievementCalculator {
             description = "Complete your first goal.",
             target = 1,
             category = AchievementCategory.Goals
+        ),
+        AchievementDefinition(
+            id = "task_100",
+            title = "Century Club",
+            description = "Complete 100 tasks.",
+            target = 100,
+            category = AchievementCategory.Tasks
+        ),
+        AchievementDefinition(
+            id = "streak_14",
+            title = "Fortnight Warrior",
+            description = "Maintain a 14-day task completion streak.",
+            target = 14,
+            category = AchievementCategory.Streaks
+        ),
+        AchievementDefinition(
+            id = "streak_30",
+            title = "Monthly Titan",
+            description = "Maintain a 30-day task completion streak.",
+            target = 30,
+            category = AchievementCategory.Streaks
+        ),
+        AchievementDefinition(
+            id = "habit_30",
+            title = "Habit Master",
+            description = "Log 30 completed habits.",
+            target = 30,
+            category = AchievementCategory.Habits
+        ),
+        AchievementDefinition(
+            id = "goal_3",
+            title = "Master Planner",
+            description = "Complete 3 goals.",
+            target = 3,
+            category = AchievementCategory.Goals
+        ),
+        AchievementDefinition(
+            id = "task_high",
+            title = "Priority Fighter",
+            description = "Complete 5 high priority tasks.",
+            target = 5,
+            category = AchievementCategory.Tasks
         )
     )
 
@@ -148,6 +190,7 @@ object AchievementCalculator {
         today: LocalDate = LocalDate.now()
     ): AchievementsUiState {
         val completedTasks = tasks.count { it.isCompleted }
+        val highPriorityCompleted = tasks.count { it.isCompleted && it.priority == "High" }
         val currentStreak = computeCurrentStreak(tasks, today)
         val completedHabitLogs = habitLogs.count { it.isCompleted }
         val completedGoals = goals.count { it.isCompleted }
@@ -156,12 +199,18 @@ object AchievementCalculator {
             "task_first" to completedTasks,
             "task_10" to completedTasks,
             "task_50" to completedTasks,
+            "task_100" to completedTasks,
+            "task_high" to highPriorityCompleted,
             "streak_3" to currentStreak,
             "streak_7" to currentStreak,
+            "streak_14" to currentStreak,
+            "streak_30" to currentStreak,
             "habit_created" to habits.size,
             "habit_7" to completedHabitLogs,
+            "habit_30" to completedHabitLogs,
             "goal_created" to goals.size,
-            "goal_completed" to completedGoals
+            "goal_completed" to completedGoals,
+            "goal_3" to completedGoals
         )
 
         val achievements = definitions.map { definition ->
@@ -226,8 +275,12 @@ object AchievementCalculator {
 class AchievementsViewModel(
     taskRepository: TaskRepository,
     habitRepository: HabitRepository,
-    goalRepository: GoalRepository
+    goalRepository: GoalRepository,
+    userPreferencesRepository: com.sg.taskspace.data.UserPreferencesRepository
 ) : ViewModel() {
+
+    val userPreferences: StateFlow<com.sg.taskspace.data.UserPreferences?> = userPreferencesRepository.userPreferencesFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     val uiState: StateFlow<AchievementsUiState> = combine(
         taskRepository.getAllTasks(),
@@ -256,7 +309,8 @@ class AchievementsViewModel(
                 return AchievementsViewModel(
                     taskRepository = TaskRepository(database.taskDao()),
                     habitRepository = HabitRepository(database.habitDao()),
-                    goalRepository = GoalRepository(database.goalDao())
+                    goalRepository = GoalRepository(database.goalDao()),
+                    userPreferencesRepository = com.sg.taskspace.data.UserPreferencesRepository(application)
                 ) as T
             }
         }

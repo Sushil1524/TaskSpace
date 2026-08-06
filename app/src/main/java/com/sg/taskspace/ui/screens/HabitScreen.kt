@@ -30,6 +30,7 @@ fun HabitScreen(
     onNavigateBack: () -> Unit
 ) {
     val habits by viewModel.habits.collectAsState()
+    val allLogs by viewModel.allLogs.collectAsState()
     val logs by viewModel.logsForSelectedDate.collectAsState()
     val habitStats by viewModel.habitStats.collectAsState()
     val selectedDate by viewModel.selectedDate.collectAsState()
@@ -66,6 +67,14 @@ fun HabitScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item {
+                val completedMap = remember(allLogs) {
+                    allLogs.filter { it.isCompleted }.groupBy { it.date }.mapValues { entry -> entry.value.size }
+                }
+                com.sg.taskspace.ui.components.HabitHeatmap(completedDatesCountMap = completedMap)
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
                 Text("Today's Habits", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
             }
             

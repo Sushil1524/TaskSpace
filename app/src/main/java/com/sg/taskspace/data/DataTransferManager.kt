@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
+import java.io.File
 import java.io.InputStreamReader
 
 import com.google.gson.annotations.SerializedName
@@ -32,6 +33,45 @@ class DataTransferManager(
     private val projectRepository: ProjectRepository
 ) {
     private val gson: Gson = GsonBuilder().setPrettyPrinting().create()
+
+    suspend fun performAutoBackupIfNeeded() {
+        withContext(Dispatchers.IO) {
+            try {
+                val prefs = userPreferencesRepository.fetchInitialPreferences()
+                val freq = prefs.autoBackupFrequency
+                if (freq == "Off") return@withContext
+
+                val intervalMillis = if (freq == "Weekly") 7 * 86400000L else 86400000L
+                val now = System.currentTimeMillis()
+
+                if (now - prefs.lastAutoBackupTimeMillis >= intervalMillis) {
+                    val tasks = taskRepository.getAllTasksSync()
+                    val journalEntries = journalRepository.allJournalEntries.first()
+                    val habits = habitRepository.allHabits.first()
+                    val habitLogs = habitRepository.allHabitLogs.first()
+                    val goals = goalRepository.allGoals.first()
+                    val projects = projectRepository.getAllProjectsSync()
+                    val backupData = BackupData(
+                        tasks = tasks,
+                        journalEntries = journalEntries,
+                        habits = habits,
+                        habitLogs = habitLogs,
+                        goals = goals,
+                        projects = projects,
+                        userPreferences = prefs
+                    )
+                    val jsonString = gson.toJson(backupData)
+
+                    val backupFile = File(context.filesDir, "taskspace_autobackup.json")
+                    backupFile.writeText(jsonString)
+
+                    userPreferencesRepository.updateLastAutoBackupTime(now)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 
     suspend fun exportData(uri: Uri): Result<Boolean> {
         return withContext(Dispatchers.IO) {
@@ -111,7 +151,10 @@ class DataTransferManager(
                     themeMode = backupData.userPreferences.themeMode,
                     fontFamily = backupData.userPreferences.fontFamily,
                     isSecureBackupEnabled = backupData.userPreferences.isSecureBackupEnabled,
-                    notificationsEnabled = backupData.userPreferences.notificationsEnabled
+                    autoBackupFrequency = backupData.userPreferences.autoBackupFrequency,
+                    notificationsEnabled = backupData.userPreferences.notificationsEnabled,
+                    soundEffectsEnabled = backupData.userPreferences.soundEffectsEnabled,
+                    totalXp = backupData.userPreferences.totalXp
                 )
 
                 Result.success(true)

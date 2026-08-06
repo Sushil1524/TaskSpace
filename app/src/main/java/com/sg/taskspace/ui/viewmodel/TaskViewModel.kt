@@ -27,6 +27,12 @@ class TaskViewModel(
     private val dataTransferManager: com.sg.taskspace.data.DataTransferManager
 ) : ViewModel() {
 
+    init {
+        viewModelScope.launch {
+            dataTransferManager.performAutoBackupIfNeeded()
+        }
+    }
+
     fun exportData(uri: android.net.Uri, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
             val result = dataTransferManager.exportData(uri)
@@ -370,6 +376,13 @@ class TaskViewModel(
     
     fun toggleTaskCompletion(task: Task) {
         viewModelScope.launch {
+            val willBeCompleted = !task.isCompleted
+            val xp = if (task.priority == "High") 20 else 10
+            if (willBeCompleted) {
+                userPreferencesRepository.addXp(xp)
+            } else {
+                userPreferencesRepository.addXp(-xp)
+            }
             if (task.repeat != "None") {
                 val todayIso = _selectedDate.value.format(DateTimeFormatter.ISO_DATE)
                 val completedInstance = task.copy(
@@ -385,6 +398,24 @@ class TaskViewModel(
             } else {
                 taskRepository.updateTask(task.copy(isCompleted = !task.isCompleted))
             }
+        }
+    }
+
+    fun saveColorPalette(colorPalette: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateColorPalette(colorPalette)
+        }
+    }
+
+    fun saveSoundEffectsEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateSoundEffectsEnabled(enabled)
+        }
+    }
+
+    fun saveAutoBackupFrequency(frequency: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateAutoBackupFrequency(frequency)
         }
     }
     

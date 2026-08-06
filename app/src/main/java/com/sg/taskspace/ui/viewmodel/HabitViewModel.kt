@@ -23,6 +23,9 @@ class HabitViewModel(private val habitRepository: HabitRepository) : ViewModel()
     val habits: StateFlow<List<Habit>> = habitRepository.allHabits
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val allLogs: StateFlow<List<HabitLog>> = habitRepository.allHabitLogs
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val logsForSelectedDate: StateFlow<List<HabitLog>> = _selectedDate
         .flatMapLatest { date ->

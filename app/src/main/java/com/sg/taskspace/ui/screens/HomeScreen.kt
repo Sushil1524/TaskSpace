@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material3.*
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -64,6 +65,7 @@ fun HomeScreen(
     val selectedDate by viewModel.selectedDate.collectAsState()
     val weeklyStats by viewModel.weeklyStats.collectAsState()
     val weeklyTasks by viewModel.weeklyTasks.collectAsState()
+    val userPreferences by viewModel.userPreferences.collectAsState()
 
     var showFinishedSection by remember { mutableStateOf(true) }
     var selectedTask by remember { mutableStateOf<Task?>(null) }
@@ -173,7 +175,7 @@ fun HomeScreen(
         ) {
             item {
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
