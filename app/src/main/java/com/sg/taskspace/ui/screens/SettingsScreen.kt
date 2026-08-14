@@ -163,7 +163,7 @@ fun SettingsScreen(
 
     // Color Palette Dialog
     if (showPaletteDialog) {
-        val palettes = listOf("Indigo", "Emerald", "Rose", "Amber", "Violet", "Teal")
+        val palettes = listOf("Indigo", "Emerald", "Rose", "Amber", "Violet", "Teal", "Monochrome")
         AlertDialog(
             onDismissRequest = { showPaletteDialog = false },
             title = { Text("Color Palette", fontWeight = FontWeight.Bold) },

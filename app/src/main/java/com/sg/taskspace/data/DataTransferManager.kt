@@ -2,16 +2,18 @@ package com.sg.taskspace.data
 
 import android.content.Context
 import android.net.Uri
+import android.util.Base64
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
-
-import com.google.gson.annotations.SerializedName
+import javax.crypto.Cipher
+import javax.crypto.spec.SecretKeySpec
 
 data class BackupData(
     @SerializedName("tasks") val tasks: List<Task>,
@@ -33,6 +35,40 @@ class DataTransferManager(
     private val projectRepository: ProjectRepository
 ) {
     private val gson: Gson = GsonBuilder().setPrettyPrinting().create()
+
+    private companion object {
+        private const val ENCRYPTION_PREFIX = "TASKSPACE_ENCRYPTED_V1:"
+        private val AES_SECRET_KEY = "TaskSpaceSecure2026SaltKeyBytes".toByteArray(Charsets.UTF_8).copyOf(16)
+    }
+
+    private fun encryptData(plainText: String): String {
+        return try {
+            val secretKeySpec = SecretKeySpec(AES_SECRET_KEY, "AES")
+            val cipher = Cipher.getInstance("AES/ECB/PKCS5Padding")
+            cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec)
+            val encryptedBytes = cipher.doFinal(plainText.toByteArray(Charsets.UTF_8))
+            ENCRYPTION_PREFIX + Base64.encodeToString(encryptedBytes, Base64.NO_WRAP)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            plainText
+        }
+    }
+
+    private fun decryptData(cipherText: String): String {
+        if (!cipherText.startsWith(ENCRYPTION_PREFIX)) return cipherText
+        return try {
+            val rawPayload = cipherText.removePrefix(ENCRYPTION_PREFIX).trim()
+            val decodedBytes = Base64.decode(rawPayload, Base64.NO_WRAP)
+            val secretKeySpec = SecretKeySpec(AES_SECRET_KEY, "AES")
+            val cipher = Cipher.getInstance("AES/ECB/PKCS5Padding")
+            cipher.init(Cipher.DECRYPT_MODE, secretKeySpec)
+            val decryptedBytes = cipher.doFinal(decodedBytes)
+            String(decryptedBytes, Charsets.UTF_8)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            cipherText
+        }
+    }
 
     suspend fun performAutoBackupIfNeeded() {
         withContext(Dispatchers.IO) {
@@ -61,9 +97,10 @@ class DataTransferManager(
                         userPreferences = prefs
                     )
                     val jsonString = gson.toJson(backupData)
+                    val contentToWrite = if (prefs.isSecureBackupEnabled) encryptData(jsonString) else jsonString
 
                     val backupFile = File(context.filesDir, "taskspace_autobackup.json")
-                    backupFile.writeText(jsonString)
+                    backupFile.writeText(contentToWrite)
 
                     userPreferencesRepository.updateLastAutoBackupTime(now)
                 }
@@ -93,9 +130,10 @@ class DataTransferManager(
                     userPreferences = prefs
                 )
                 val jsonString = gson.toJson(backupData)
+                val payloadToWrite = if (prefs.isSecureBackupEnabled) encryptData(jsonString) else jsonString
 
                 context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                    outputStream.write(jsonString.toByteArray())
+                    outputStream.write(payloadToWrite.toByteArray(Charsets.UTF_8))
                 }
                 Result.success(true)
             } catch (e: Exception) {
@@ -118,7 +156,8 @@ class DataTransferManager(
                         }
                     }
                 }
-                val jsonString = stringBuilder.toString()
+                val rawContent = stringBuilder.toString()
+                val jsonString = decryptData(rawContent)
                 val backupData = gson.fromJson(jsonString, BackupData::class.java)
 
                 backupData.tasks.forEach { task ->
@@ -150,6 +189,7 @@ class DataTransferManager(
                     isOnboardingCompleted = backupData.userPreferences.isOnboardingCompleted,
                     themeMode = backupData.userPreferences.themeMode,
                     fontFamily = backupData.userPreferences.fontFamily,
+                    colorPalette = backupData.userPreferences.colorPalette,
                     isSecureBackupEnabled = backupData.userPreferences.isSecureBackupEnabled,
                     autoBackupFrequency = backupData.userPreferences.autoBackupFrequency,
                     notificationsEnabled = backupData.userPreferences.notificationsEnabled,

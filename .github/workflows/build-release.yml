@@ -44,11 +44,11 @@ jobs:
           path: app/build/outputs/apk/release/TaskSpace-release.apk
           retention-days: 30
 
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: app/build/outputs/apk/release/TaskSpace-release.apk
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GIT_TOKEN }}
+      # - name: Create GitHub Release
+      #   if: startsWith(github.ref, 'refs/tags/')
+      #   uses: softprops/action-gh-release@v2
+      #   with:
+      #     files: app/build/outputs/apk/release/TaskSpace-release.apk
+      #     generate_release_notes: true
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GIT_TOKEN }}

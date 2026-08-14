@@ -1,5 +1,6 @@
 package com.sg.taskspace.ui.screens
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.expandVertically
@@ -20,9 +21,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -34,7 +35,9 @@ import com.sg.taskspace.ui.theme.PriorityLow
 import com.sg.taskspace.ui.theme.PriorityMedium
 import com.sg.taskspace.ui.theme.SecondaryEmerald
 import com.sg.taskspace.ui.viewmodel.TaskViewModel
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,18 +46,18 @@ fun HistoryScreen(
     viewModel: TaskViewModel,
     onNavigateBack: () -> Unit
 ) {
+    val context = LocalContext.current
     val currentDayOfWeek = LocalDate.now().dayOfWeek.value % 7
     val thisSunday = LocalDate.now().minusDays(currentDayOfWeek.toLong())
     var currentWeekStart by remember { mutableStateOf(thisSunday) }
 
     val weeklyStats by viewModel.getWeekStats(currentWeekStart).collectAsState(initial = emptyList())
-
-    // All tasks for search/filter — we get from weekly window
     val weekTasks by viewModel.getWeekStats(currentWeekStart).collectAsState(initial = emptyList())
 
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("All") } // All, Completed, Active
     var selectedPriority by remember { mutableStateOf("All") }
+    var taskToCopy by remember { mutableStateOf<Task?>(null) }
 
     val totalTasks = weeklyStats.sumOf { it.totalTasks }
     val completedTasks = weeklyStats.sumOf { it.completedTasks }
@@ -63,6 +66,32 @@ fun HistoryScreen(
 
     val dayFormatter = DateTimeFormatter.ofPattern("EEE, MMM d")
     val isCurrentWeek = currentWeekStart == thisSunday
+
+    // Copy Task Dialog
+    taskToCopy?.let { task ->
+        CopyTaskDialog(
+            task = task,
+            currentWeekStart = currentWeekStart,
+            onDismiss = { taskToCopy = null },
+            onCopy = { taskTarget, targetDate ->
+                viewModel.addTask(
+                    title = taskTarget.title,
+                    notes = taskTarget.notes ?: "",
+                    priority = taskTarget.priority,
+                    category = taskTarget.category,
+                    repeat = taskTarget.repeat,
+                    date = targetDate,
+                    estimatedMinutes = taskTarget.estimatedMinutes,
+                    projectId = taskTarget.projectId,
+                    tags = taskTarget.tags,
+                    time = taskTarget.time
+                )
+                val formatted = targetDate.format(DateTimeFormatter.ofPattern("EEE, MMM d"))
+                Toast.makeText(context, "Copied task to $formatted!", Toast.LENGTH_SHORT).show()
+                taskToCopy = null
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -259,13 +288,114 @@ fun HistoryScreen(
                     searchQuery = searchQuery,
                     statusFilter = selectedFilter,
                     priorityFilter = selectedPriority,
-                    onRestoreTask = { viewModel.updateTaskDetails(it.copy(isCompleted = false)) }
+                    onCopyTask = { task -> taskToCopy = task }
                 )
             }
 
             item { Spacer(modifier = Modifier.height(32.dp)) }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CopyTaskDialog(
+    task: Task,
+    currentWeekStart: LocalDate,
+    onDismiss: () -> Unit,
+    onCopy: (Task, LocalDate) -> Unit
+) {
+    val daysOfWeek = remember(currentWeekStart) {
+        (0..6).map { currentWeekStart.plusDays(it.toLong()) }
+    }
+    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = selectedDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        selectedDate = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
+                    }
+                    showDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Copy Task", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = "Create a copy of \"${task.title}\" for:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                // Quick options: Today & Tomorrow
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    FilterChip(
+                        selected = selectedDate == LocalDate.now(),
+                        onClick = { selectedDate = LocalDate.now() },
+                        label = { Text("Today") },
+                        leadingIcon = { Icon(Icons.Default.Today, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    FilterChip(
+                        selected = selectedDate == LocalDate.now().plusDays(1),
+                        onClick = { selectedDate = LocalDate.now().plusDays(1) },
+                        label = { Text("Tomorrow") },
+                        leadingIcon = { Icon(Icons.Default.WbSunny, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Text("Or select day of week:", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
+
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(daysOfWeek) { day ->
+                        val isSelected = selectedDate == day
+                        val dayLabel = day.format(DateTimeFormatter.ofPattern("EEE d"))
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { selectedDate = day },
+                            label = { Text(dayLabel, fontSize = 11.sp) }
+                        )
+                    }
+                }
+
+                TextButton(
+                    onClick = { showDatePicker = true },
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Icon(Icons.Default.CalendarMonth, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Pick date: ${selectedDate.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))}", fontSize = 11.sp)
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onCopy(task, selectedDate) }) {
+                Text("Copy Task")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+        shape = RoundedCornerShape(20.dp)
+    )
 }
 
 @Composable
@@ -297,7 +427,7 @@ private fun DayHistoryCard(
     searchQuery: String,
     statusFilter: String,
     priorityFilter: String,
-    onRestoreTask: (Task) -> Unit
+    onCopyTask: (Task) -> Unit
 ) {
     var expanded by remember { mutableStateOf(dateLabel == "Today" || dateLabel == "Yesterday") }
 
@@ -330,7 +460,6 @@ private fun DayHistoryCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    // Completion dot
                     val completionColor = when {
                         stat.totalTasks == 0 -> MaterialTheme.colorScheme.outline
                         stat.completedTasks == stat.totalTasks -> SecondaryEmerald
@@ -378,7 +507,7 @@ private fun DayHistoryCard(
                         Text("No tasks match filters.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else {
                         displayTasks.forEach { task ->
-                            HistoryTaskRow(task = task, onRestore = { onRestoreTask(task) })
+                            HistoryTaskRow(task = task, onCopy = { onCopyTask(task) })
                         }
                     }
                 }
@@ -388,7 +517,7 @@ private fun DayHistoryCard(
 }
 
 @Composable
-private fun HistoryTaskRow(task: Task, onRestore: () -> Unit) {
+private fun HistoryTaskRow(task: Task, onCopy: () -> Unit) {
     val priorityColor = when (task.priority) {
         "High" -> PriorityHigh
         "Medium" -> PriorityMedium
@@ -417,12 +546,18 @@ private fun HistoryTaskRow(task: Task, onRestore: () -> Unit) {
                 Text(task.category, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        if (task.isCompleted) {
-            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = SecondaryEmerald, modifier = Modifier.size(18.dp))
-        } else {
-            // Restore button for incomplete tasks
-            TextButton(onClick = onRestore, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) {
-                Text("Restore", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (task.isCompleted) {
+                Icon(Icons.Default.CheckCircle, contentDescription = "Completed", tint = SecondaryEmerald, modifier = Modifier.size(18.dp))
+            }
+            TextButton(
+                onClick = onCopy,
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                    Text("Copy", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                }
             }
         }
     }
