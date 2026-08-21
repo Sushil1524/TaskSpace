@@ -102,6 +102,10 @@ class TaskViewModel(
     private val _selectedDate = MutableStateFlow(currentDate)
     val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
 
+    fun selectDate(date: LocalDate) {
+        _selectedDate.value = date
+    }
+
     data class DayStats(val date: LocalDate, val totalTasks: Int, val completedTasks: Int, val tasks: List<Task> = emptyList())
 
     // Reflection Text

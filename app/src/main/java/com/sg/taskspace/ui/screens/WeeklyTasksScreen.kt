@@ -20,11 +20,14 @@ import com.sg.taskspace.ui.viewmodel.TaskViewModel
 @Composable
 fun WeeklyTasksScreen(
     viewModel: TaskViewModel,
+    projectViewModel: com.sg.taskspace.ui.viewmodel.ProjectViewModel? = null,
     onNavigateBack: () -> Unit,
-    onAddTaskClick: () -> Unit
+    onAddTaskClick: (java.time.LocalDate) -> Unit
 ) {
     val weeklyTasks by viewModel.weeklyTasks.collectAsState()
     val selectedDate by viewModel.selectedDate.collectAsState()
+    val projects by (projectViewModel?.projects?.collectAsState() ?: remember { mutableStateOf(emptyList()) })
+    val projectsMap = remember(projects) { projects.associateBy { it.id } }
     
     var currentTabDate by remember { mutableStateOf(selectedDate) }
     var taskToEdit by remember { mutableStateOf<Task?>(null) }
@@ -106,7 +109,7 @@ fun WeeklyTasksScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = onAddTaskClick,
+                onClick = { onAddTaskClick(currentTabDate) },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Task")
@@ -141,7 +144,8 @@ fun WeeklyTasksScreen(
                         task = task,
                         onCheckedChange = { viewModel.toggleTaskCompletion(task) },
                         onClick = { taskToEdit = task },
-                        onDelete = { viewModel.deleteTask(task) }
+                        onDelete = { viewModel.deleteTask(task) },
+                        projectName = task.projectId?.let { projectsMap[it]?.name }
                     )
                 }
             }

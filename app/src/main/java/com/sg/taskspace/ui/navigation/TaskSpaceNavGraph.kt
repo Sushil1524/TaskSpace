@@ -82,6 +82,7 @@ fun TaskSpaceNavGraph(
             composable("home") {
                 HomeScreen(
                     viewModel = taskViewModel,
+                    projectViewModel = projectViewModel,
                     onWeeklyTasksClick = { navController.navigate("weekly_tasks") },
                     onHistoryClick = { navController.navigate("history") },
                     onAchievementsClick = { navController.navigate("achievements") },
@@ -265,12 +266,16 @@ fun TaskSpaceNavGraph(
             ) {
                 WeeklyTasksScreen(
                     viewModel = taskViewModel,
+                    projectViewModel = projectViewModel,
                     onNavigateBack = { 
                         if (navController.previousBackStackEntry != null) {
                             navController.popBackStack()
                         }
                     },
-                    onAddTaskClick = { navController.navigate("add_task") }
+                    onAddTaskClick = { targetDate ->
+                        taskViewModel.selectDate(targetDate)
+                        navController.navigate("add_task")
+                    }
                 )
             }
             composable(

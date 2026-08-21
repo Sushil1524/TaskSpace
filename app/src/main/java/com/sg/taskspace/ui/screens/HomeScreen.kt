@@ -48,6 +48,7 @@ import java.time.LocalDate
 @Composable
 fun HomeScreen(
     viewModel: TaskViewModel,
+    projectViewModel: com.sg.taskspace.ui.viewmodel.ProjectViewModel? = null,
     onWeeklyTasksClick: () -> Unit,
     onHistoryClick: () -> Unit,
     onAchievementsClick: () -> Unit,
@@ -60,6 +61,8 @@ fun HomeScreen(
     onAddTaskClick: () -> Unit
 ) {
     val tasks by viewModel.currentDisplayTasks.collectAsState()
+    val projects by (projectViewModel?.projects?.collectAsState() ?: remember { mutableStateOf(emptyList()) })
+    val projectsMap = remember(projects) { projects.associateBy { it.id } }
     val formattedDate = viewModel.formattedDate
     val weekNumber = viewModel.weekNumber
     val selectedDate by viewModel.selectedDate.collectAsState()
@@ -335,7 +338,8 @@ fun HomeScreen(
                         task = task,
                         onCheckedChange = { viewModel.toggleTaskCompletion(task) },
                         onClick = { selectedTask = task },
-                        onDelete = { viewModel.deleteTask(task) }
+                        onDelete = { viewModel.deleteTask(task) },
+                        projectName = task.projectId?.let { projectsMap[it]?.name }
                     )
                 }
 
@@ -370,7 +374,8 @@ fun HomeScreen(
                                 task = task,
                                 onCheckedChange = { viewModel.toggleTaskCompletion(task) },
                                 onClick = { selectedTask = task },
-                                onDelete = { viewModel.deleteTask(task) }
+                                onDelete = { viewModel.deleteTask(task) },
+                                projectName = task.projectId?.let { projectsMap[it]?.name }
                             )
                         }
                     }
