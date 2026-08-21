@@ -25,11 +25,16 @@ fun buildColorScheme(themeMode: String, colorPalette: String, isSystemDark: Bool
         "Amber" -> if (isDark) Color(0xFFFBBF24) to Color(0xFF78350F) else Color(0xFFF59E0B) to Color(0xFFFEF3C7)
         "Violet" -> if (isDark) Color(0xFFA78BFA) to Color(0xFF4C1D95) else Color(0xFF8B5CF6) to Color(0xFFEDE9FE)
         "Teal" -> if (isDark) Color(0xFF2DD4BF) to Color(0xFF134E4A) else Color(0xFF14B8A6) to Color(0xFFCCFBF1)
-        "Monochrome" -> if (isDark) Color(0xFFFFFFFF) to Color(0xFF27272A) else Color(0xFF000000) to Color(0xFFF1F5F9)
+        "Monochrome" -> {
+            if (themeMode == "AMOLED Dark") Color(0xFFFFFFFF) to Color(0xFF141416)
+            else if (isDark) Color(0xFFFFFFFF) to Color(0xFF202023)
+            else Color(0xFF000000) to Color(0xFFF1F5F9)
+        }
         else -> if (isDark) Color(0xFF818CF8) to Color(0xFF3730A3) else Color(0xFF6366F1) to Color(0xFFE0E7FF) // Indigo default
     }
 
     val onPrimaryColor = if (colorPalette == "Monochrome" && isDark) Color.Black else Color.White
+    val isMonoAmoled = themeMode == "AMOLED Dark" && colorPalette == "Monochrome"
 
     return when {
         themeMode == "AMOLED Dark" -> darkColorScheme(
@@ -37,9 +42,9 @@ fun buildColorScheme(themeMode: String, colorPalette: String, isSystemDark: Bool
             onPrimary = onPrimaryColor,
             primaryContainer = containerColor,
             onPrimaryContainer = Color.White,
-            secondary = SecondaryEmeraldDark,
+            secondary = if (colorPalette == "Monochrome") Color(0xFFE4E4E7) else SecondaryEmeraldDark,
             onSecondary = Color.Black,
-            secondaryContainer = SecondaryEmeraldContainer,
+            secondaryContainer = if (colorPalette == "Monochrome") Color(0xFF18181B) else SecondaryEmeraldContainer,
             onSecondaryContainer = Color(0xFFD1FAE5),
             tertiary = PriorityMedium,
             onTertiary = Color.Black,
@@ -47,9 +52,9 @@ fun buildColorScheme(themeMode: String, colorPalette: String, isSystemDark: Bool
             onBackground = TextWhite,
             surface = AmoledSurface,
             onSurface = TextWhite,
-            surfaceVariant = AmoledCard,
+            surfaceVariant = if (isMonoAmoled) Color(0xFF0F0F11) else AmoledCard,
             onSurfaceVariant = TextWhiteMuted,
-            outline = AmoledBorder,
+            outline = if (isMonoAmoled) Color(0xFF242427) else AmoledBorder,
             error = PriorityHigh,
             onError = Color.White,
             errorContainer = PriorityHighContainer,
