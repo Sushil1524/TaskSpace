@@ -194,7 +194,7 @@ fun GoalCard(goal: Goal, onToggle: () -> Unit, onDelete: () -> Unit) {
                     Text(
                         text = "Added On: ${dateCreated.format(java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.SHORT))}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp, start = 20.dp)
                     )
                 }

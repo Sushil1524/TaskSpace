@@ -22,9 +22,11 @@ object AudioHapticHelper {
 
     fun playTaskCompleteSoundAndHaptic(context: Context, hapticFeedback: HapticFeedback? = null, soundEnabled: Boolean = true) {
         // Compose Haptic Feedback
-        hapticFeedback?.performHapticFeedback(HapticFeedbackType.LongPress)
+        runCatching {
+            hapticFeedback?.performHapticFeedback(HapticFeedbackType.LongPress)
+        }
 
-        // Device Vibrator
+        // Hardware Vibrator
         runCatching {
             val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
@@ -36,12 +38,16 @@ object AudioHapticHelper {
             vibrator?.let { v ->
                 if (v.hasVibrator()) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        v.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK))
+                        try {
+                            v.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK))
+                        } catch (e: Exception) {
+                            v.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
+                        }
                     } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        v.vibrate(VibrationEffect.createOneShot(60, VibrationEffect.DEFAULT_AMPLITUDE))
+                        v.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
                     } else {
                         @Suppress("DEPRECATION")
-                        v.vibrate(60)
+                        v.vibrate(50)
                     }
                 }
             }

@@ -78,6 +78,7 @@ fun HomeScreen(
     if (selectedTask != null) {
         com.sg.taskspace.ui.components.TaskDetailDialog(
             task = selectedTask!!,
+            projects = projects,
             onDismissRequest = { selectedTask = null },
             onUpdateTask = { updatedTask ->
                 viewModel.updateTaskDetails(updatedTask)

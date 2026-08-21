@@ -389,7 +389,7 @@ fun SettingsScreen(
             SettingsItem(
                 icon = Icons.Default.Info,
                 title = "Version",
-                subtitle = "v1.3.0 — TaskSpace",
+                subtitle = "v1.3.1 — TaskSpace",
                 onClick = { }
             )
         }

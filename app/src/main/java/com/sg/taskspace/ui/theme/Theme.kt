@@ -33,14 +33,18 @@ fun buildColorScheme(themeMode: String, colorPalette: String, isSystemDark: Bool
         else -> if (isDark) Color(0xFF818CF8) to Color(0xFF3730A3) else Color(0xFF6366F1) to Color(0xFFE0E7FF) // Indigo default
     }
 
-    val onPrimaryColor = if (colorPalette == "Monochrome" && isDark) Color.Black else Color.White
+    val onPrimaryColor = when {
+        colorPalette == "Monochrome" && isDark -> Color.Black
+        colorPalette == "Monochrome" && !isDark -> Color.White
+        else -> Color.White
+    }
     val isMonoAmoled = themeMode == "AMOLED Dark" && colorPalette == "Monochrome"
 
-    return when {
-        themeMode == "AMOLED Dark" -> darkColorScheme(
+    return when (themeMode) {
+        "AMOLED Dark" -> darkColorScheme(
             primary = primaryColor,
             onPrimary = onPrimaryColor,
-            primaryContainer = containerColor,
+            primaryContainer = if (colorPalette == "Monochrome") Color(0xFF18181B) else containerColor,
             onPrimaryContainer = Color.White,
             secondary = if (colorPalette == "Monochrome") Color(0xFFE4E4E7) else SecondaryEmeraldDark,
             onSecondary = Color.Black,
@@ -52,17 +56,17 @@ fun buildColorScheme(themeMode: String, colorPalette: String, isSystemDark: Bool
             onBackground = TextWhite,
             surface = AmoledSurface,
             onSurface = TextWhite,
-            surfaceVariant = if (isMonoAmoled) Color(0xFF0F0F11) else AmoledCard,
+            surfaceVariant = if (isMonoAmoled) Color(0xFF09090A) else Color(0xFF0C0C0E),
             onSurfaceVariant = TextWhiteMuted,
-            outline = if (isMonoAmoled) Color(0xFF242427) else AmoledBorder,
+            outline = if (isMonoAmoled) Color(0xFF1A1A1D) else Color(0xFF1E1E22),
             error = PriorityHigh,
             onError = Color.White,
             errorContainer = PriorityHighContainer,
             onErrorContainer = Color(0xFFFFE4E6)
         )
-        themeMode == "Dark" -> darkColorScheme(
+        "Dark" -> darkColorScheme(
             primary = primaryColor,
-            onPrimary = Color.White,
+            onPrimary = onPrimaryColor,
             primaryContainer = containerColor,
             onPrimaryContainer = Color.White,
             secondary = SecondaryEmeraldDark,
@@ -83,9 +87,9 @@ fun buildColorScheme(themeMode: String, colorPalette: String, isSystemDark: Bool
             errorContainer = PriorityHighContainer,
             onErrorContainer = Color(0xFFFFE4E6)
         )
-        themeMode == "Light" -> lightColorScheme(
+        "Light" -> lightColorScheme(
             primary = primaryColor,
-            onPrimary = Color.White,
+            onPrimary = onPrimaryColor,
             primaryContainer = containerColor,
             onPrimaryContainer = Color(0xFF1E1B4B),
             secondary = SecondaryEmerald,
@@ -110,7 +114,7 @@ fun buildColorScheme(themeMode: String, colorPalette: String, isSystemDark: Bool
             if (isSystemDark) {
                 darkColorScheme(
                     primary = primaryColor,
-                    onPrimary = Color.White,
+                    onPrimary = onPrimaryColor,
                     primaryContainer = containerColor,
                     onPrimaryContainer = Color.White,
                     background = DarkBackground,
@@ -123,7 +127,7 @@ fun buildColorScheme(themeMode: String, colorPalette: String, isSystemDark: Bool
             } else {
                 lightColorScheme(
                     primary = primaryColor,
-                    onPrimary = Color.White,
+                    onPrimary = onPrimaryColor,
                     primaryContainer = containerColor,
                     onPrimaryContainer = Color(0xFF1E1B4B),
                     background = LightBackground,

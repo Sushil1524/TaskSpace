@@ -78,6 +78,10 @@ fun HabitHeatmap(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            val isMonochrome = MaterialTheme.colorScheme.primary == Color.White || MaterialTheme.colorScheme.primary == Color.Black
+            val activeColor = if (isMonochrome) Color(0xFFE4E4E7) else SecondaryEmerald
+            val emptyColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+
             // 12-week scrollable grid
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -87,11 +91,11 @@ fun HabitHeatmap(
                     val weekDays = grid[weekIdx]
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         weekDays.forEach { (date, count) ->
-                            val intensity = if (count == 0) 0f else (count.toFloat() / maxCount).coerceIn(0.2f, 1f)
+                            val intensity = if (count == 0) 0f else (count.toFloat() / maxCount).coerceIn(0.3f, 1f)
                             val cellColor = when {
-                                date > today -> MaterialTheme.colorScheme.surface.copy(alpha = 0.3f)
-                                count == 0 -> MaterialTheme.colorScheme.surface
-                                else -> SecondaryEmerald.copy(alpha = intensity)
+                                date > today -> emptyColor.copy(alpha = 0.04f)
+                                count == 0 -> emptyColor
+                                else -> activeColor.copy(alpha = intensity)
                             }
 
                             Box(
@@ -115,7 +119,7 @@ fun HabitHeatmap(
             ) {
                 Text("Less ", style = MaterialTheme.typography.labelSmall, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 listOf(0f, 0.3f, 0.6f, 1.0f).forEach { alpha ->
-                    val color = if (alpha == 0f) MaterialTheme.colorScheme.surface else SecondaryEmerald.copy(alpha = alpha)
+                    val color = if (alpha == 0f) emptyColor else activeColor.copy(alpha = alpha)
                     Box(
                         modifier = Modifier
                             .padding(horizontal = 2.dp)
