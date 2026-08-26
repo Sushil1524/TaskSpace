@@ -84,6 +84,25 @@ class TaskViewModel(
         }
     }
 
+    fun saveSwipeRightAction(action: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateSwipeRightAction(action)
+        }
+    }
+
+    fun saveSwipeLeftAction(action: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateSwipeLeftAction(action)
+        }
+    }
+
+    fun snoozeTaskToTomorrow(task: Task) {
+        viewModelScope.launch {
+            val tomorrowIso = LocalDate.now().plusDays(1).format(DateTimeFormatter.ISO_DATE)
+            taskRepository.updateTask(task.copy(createdForDate = tomorrowIso, isCompleted = false))
+        }
+    }
+
     fun completeOnboarding() {
         viewModelScope.launch {
             userPreferencesRepository.setOnboardingCompleted(true)

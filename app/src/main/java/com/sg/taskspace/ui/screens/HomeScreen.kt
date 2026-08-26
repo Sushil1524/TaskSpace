@@ -333,6 +333,9 @@ fun HomeScreen(
                     }
                 }
             } else {
+                val swipeRightAction = userPreferences?.swipeRightAction ?: "Complete"
+                val swipeLeftAction = userPreferences?.swipeLeftAction ?: "Delete"
+
                 // Active tasks first
                 items(activeTasks) { task ->
                     TaskCard(
@@ -340,7 +343,10 @@ fun HomeScreen(
                         onCheckedChange = { viewModel.toggleTaskCompletion(task) },
                         onClick = { selectedTask = task },
                         onDelete = { viewModel.deleteTask(task) },
-                        projectName = task.projectId?.let { projectsMap[it]?.name }
+                        onSnooze = { viewModel.snoozeTaskToTomorrow(task) },
+                        projectName = task.projectId?.let { projectsMap[it]?.name },
+                        swipeRightAction = swipeRightAction,
+                        swipeLeftAction = swipeLeftAction
                     )
                 }
 
@@ -376,7 +382,10 @@ fun HomeScreen(
                                 onCheckedChange = { viewModel.toggleTaskCompletion(task) },
                                 onClick = { selectedTask = task },
                                 onDelete = { viewModel.deleteTask(task) },
-                                projectName = task.projectId?.let { projectsMap[it]?.name }
+                                onSnooze = { viewModel.snoozeTaskToTomorrow(task) },
+                                projectName = task.projectId?.let { projectsMap[it]?.name },
+                                swipeRightAction = swipeRightAction,
+                                swipeLeftAction = swipeLeftAction
                             )
                         }
                     }

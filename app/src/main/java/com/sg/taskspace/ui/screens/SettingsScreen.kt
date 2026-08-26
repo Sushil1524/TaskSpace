@@ -233,6 +233,84 @@ fun SettingsScreen(
         )
     }
 
+    var showSwipeRightDialog by remember { mutableStateOf(false) }
+    var showSwipeLeftDialog by remember { mutableStateOf(false) }
+
+    val swipeRightAction = userPreferences?.swipeRightAction ?: "Complete"
+    val swipeLeftAction = userPreferences?.swipeLeftAction ?: "Edit"
+
+    // Swipe Right Action Dialog
+    if (showSwipeRightDialog) {
+        val swipeOptions = listOf("Complete", "Snooze", "Edit", "Delete", "None")
+        AlertDialog(
+            onDismissRequest = { showSwipeRightDialog = false },
+            title = { Text("Swipe Right Action", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    swipeOptions.forEach { action ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.saveSwipeRightAction(action)
+                                    showSwipeRightDialog = false
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(action, style = MaterialTheme.typography.bodyLarge)
+                            if (swipeRightAction == action) {
+                                Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showSwipeRightDialog = false }) { Text("Cancel") }
+            },
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    // Swipe Left Action Dialog
+    if (showSwipeLeftDialog) {
+        val swipeOptions = listOf("Delete", "Complete", "Snooze", "Edit", "None")
+        AlertDialog(
+            onDismissRequest = { showSwipeLeftDialog = false },
+            title = { Text("Swipe Left Action", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    swipeOptions.forEach { action ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.saveSwipeLeftAction(action)
+                                    showSwipeLeftDialog = false
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(action, style = MaterialTheme.typography.bodyLarge)
+                            if (swipeLeftAction == action) {
+                                Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showSwipeLeftDialog = false }) { Text("Cancel") }
+            },
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -338,6 +416,25 @@ fun SettingsScreen(
                     onCheckedChange = { viewModel.saveSoundEffectsEnabled(it) }
                 )
             }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+            // ── Task Gestures & Swipe Actions ──
+            SettingsSectionTitle("Task Gestures & Swipe Actions")
+            SettingsItem(
+                icon = Icons.Default.Swipe,
+                title = "Swipe Right Action",
+                subtitle = "Action when swiping task right: $swipeRightAction",
+                onClick = { showSwipeRightDialog = true },
+                trailingIcon = Icons.Default.ChevronRight
+            )
+            SettingsItem(
+                icon = Icons.Default.Swipe,
+                title = "Swipe Left Action",
+                subtitle = "Action when swiping task left: $swipeLeftAction",
+                onClick = { showSwipeLeftDialog = true },
+                trailingIcon = Icons.Default.ChevronRight
+            )
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 

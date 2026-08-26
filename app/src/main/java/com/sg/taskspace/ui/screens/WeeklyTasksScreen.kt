@@ -29,6 +29,10 @@ fun WeeklyTasksScreen(
     val projects by (projectViewModel?.projects?.collectAsState() ?: remember { mutableStateOf(emptyList()) })
     val projectsMap = remember(projects) { projects.associateBy { it.id } }
     
+    val userPreferences by viewModel.userPreferences.collectAsState()
+    val swipeRightAction = userPreferences?.swipeRightAction ?: "Complete"
+    val swipeLeftAction = userPreferences?.swipeLeftAction ?: "Delete"
+
     var currentTabDate by remember { mutableStateOf(selectedDate) }
     var taskToEdit by remember { mutableStateOf<Task?>(null) }
 
@@ -146,7 +150,10 @@ fun WeeklyTasksScreen(
                         onCheckedChange = { viewModel.toggleTaskCompletion(task) },
                         onClick = { taskToEdit = task },
                         onDelete = { viewModel.deleteTask(task) },
-                        projectName = task.projectId?.let { projectsMap[it]?.name }
+                        onSnooze = { viewModel.snoozeTaskToTomorrow(task) },
+                        projectName = task.projectId?.let { projectsMap[it]?.name },
+                        swipeRightAction = swipeRightAction,
+                        swipeLeftAction = swipeLeftAction
                     )
                 }
             }

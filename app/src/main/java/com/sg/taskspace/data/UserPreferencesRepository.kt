@@ -35,6 +35,9 @@ class UserPreferencesRepository(private val context: Context) {
         // Notifications & Feedback
         val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
         val SOUND_EFFECTS_ENABLED = booleanPreferencesKey("sound_effects_enabled")
+        // Gestures & Swipe Actions
+        val SWIPE_RIGHT_ACTION = stringPreferencesKey("swipe_right_action") // "Complete", "Snooze", "Edit", "Delete", "None"
+        val SWIPE_LEFT_ACTION = stringPreferencesKey("swipe_left_action")  // "Delete", "Complete", "Snooze", "Edit", "None"
         // Gamification
         val TOTAL_XP = intPreferencesKey("total_xp")
     }
@@ -58,6 +61,8 @@ class UserPreferencesRepository(private val context: Context) {
             val lastAutoBackupTimeMillis = preferences[PreferencesKeys.LAST_AUTO_BACKUP_TIME] ?: 0L
             val notificationsEnabled = preferences[PreferencesKeys.NOTIFICATIONS_ENABLED] ?: false
             val soundEffectsEnabled = preferences[PreferencesKeys.SOUND_EFFECTS_ENABLED] ?: true
+            val swipeRightAction = preferences[PreferencesKeys.SWIPE_RIGHT_ACTION] ?: "Complete"
+            val swipeLeftAction = preferences[PreferencesKeys.SWIPE_LEFT_ACTION] ?: "Delete"
             val totalXp = preferences[PreferencesKeys.TOTAL_XP] ?: 0
 
             UserPreferences(
@@ -71,6 +76,8 @@ class UserPreferencesRepository(private val context: Context) {
                 lastAutoBackupTimeMillis = lastAutoBackupTimeMillis,
                 notificationsEnabled = notificationsEnabled,
                 soundEffectsEnabled = soundEffectsEnabled,
+                swipeRightAction = swipeRightAction,
+                swipeLeftAction = swipeLeftAction,
                 totalXp = totalXp
             )
         }
@@ -135,6 +142,18 @@ class UserPreferencesRepository(private val context: Context) {
         }
     }
 
+    suspend fun updateSwipeRightAction(action: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.SWIPE_RIGHT_ACTION] = action
+        }
+    }
+
+    suspend fun updateSwipeLeftAction(action: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.SWIPE_LEFT_ACTION] = action
+        }
+    }
+
     suspend fun addXp(amount: Int) {
         context.dataStore.edit { preferences ->
             val current = preferences[PreferencesKeys.TOTAL_XP] ?: 0
@@ -156,6 +175,8 @@ class UserPreferencesRepository(private val context: Context) {
         autoBackupFrequency: String = "Daily",
         notificationsEnabled: Boolean = false,
         soundEffectsEnabled: Boolean = true,
+        swipeRightAction: String = "Complete",
+        swipeLeftAction: String = "Delete",
         totalXp: Int = 0
     ) {
         context.dataStore.edit { preferences ->
@@ -168,6 +189,8 @@ class UserPreferencesRepository(private val context: Context) {
             preferences[PreferencesKeys.AUTO_BACKUP_FREQUENCY] = autoBackupFrequency
             preferences[PreferencesKeys.NOTIFICATIONS_ENABLED] = notificationsEnabled
             preferences[PreferencesKeys.SOUND_EFFECTS_ENABLED] = soundEffectsEnabled
+            preferences[PreferencesKeys.SWIPE_RIGHT_ACTION] = swipeRightAction
+            preferences[PreferencesKeys.SWIPE_LEFT_ACTION] = swipeLeftAction
             preferences[PreferencesKeys.TOTAL_XP] = totalXp
         }
     }
@@ -184,6 +207,8 @@ data class UserPreferences(
     @SerializedName("lastAutoBackupTimeMillis") val lastAutoBackupTimeMillis: Long = 0L,
     @SerializedName("notificationsEnabled") val notificationsEnabled: Boolean = false,
     @SerializedName("soundEffectsEnabled") val soundEffectsEnabled: Boolean = true,
+    @SerializedName("swipeRightAction") val swipeRightAction: String = "Complete",
+    @SerializedName("swipeLeftAction") val swipeLeftAction: String = "Delete",
     @SerializedName("totalXp") val totalXp: Int = 0
 ) {
     // Gamification level calculation: Level = (XP / 100) + 1
