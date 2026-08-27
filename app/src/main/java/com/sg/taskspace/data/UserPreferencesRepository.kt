@@ -38,6 +38,12 @@ class UserPreferencesRepository(private val context: Context) {
         // Gestures & Swipe Actions
         val SWIPE_RIGHT_ACTION = stringPreferencesKey("swipe_right_action") // "Complete", "Snooze", "Edit", "Delete", "None"
         val SWIPE_LEFT_ACTION = stringPreferencesKey("swipe_left_action")  // "Delete", "Complete", "Snooze", "Edit", "None"
+        // App Lock & Security
+        val IS_APP_LOCK_ENABLED = booleanPreferencesKey("is_app_lock_enabled")
+        val APP_LOCK_PIN_HASH = stringPreferencesKey("app_lock_pin_hash")
+        val IS_BIOMETRIC_ENABLED = booleanPreferencesKey("is_biometric_enabled")
+        val AUTO_LOCK_TIMEOUT = stringPreferencesKey("auto_lock_timeout") // "Immediately", "1 minute", "5 minutes", "15 minutes", "30 minutes"
+        val LAST_BACKGROUND_TIME = longPreferencesKey("last_background_time")
         // Gamification
         val TOTAL_XP = intPreferencesKey("total_xp")
     }
@@ -63,6 +69,11 @@ class UserPreferencesRepository(private val context: Context) {
             val soundEffectsEnabled = preferences[PreferencesKeys.SOUND_EFFECTS_ENABLED] ?: true
             val swipeRightAction = preferences[PreferencesKeys.SWIPE_RIGHT_ACTION] ?: "Complete"
             val swipeLeftAction = preferences[PreferencesKeys.SWIPE_LEFT_ACTION] ?: "Delete"
+            val isAppLockEnabled = preferences[PreferencesKeys.IS_APP_LOCK_ENABLED] ?: false
+            val appLockPinHash = preferences[PreferencesKeys.APP_LOCK_PIN_HASH] ?: ""
+            val isBiometricEnabled = preferences[PreferencesKeys.IS_BIOMETRIC_ENABLED] ?: true
+            val autoLockTimeout = preferences[PreferencesKeys.AUTO_LOCK_TIMEOUT] ?: "Immediately"
+            val lastBackgroundTimeMillis = preferences[PreferencesKeys.LAST_BACKGROUND_TIME] ?: 0L
             val totalXp = preferences[PreferencesKeys.TOTAL_XP] ?: 0
 
             UserPreferences(
@@ -78,6 +89,11 @@ class UserPreferencesRepository(private val context: Context) {
                 soundEffectsEnabled = soundEffectsEnabled,
                 swipeRightAction = swipeRightAction,
                 swipeLeftAction = swipeLeftAction,
+                isAppLockEnabled = isAppLockEnabled,
+                appLockPinHash = appLockPinHash,
+                isBiometricEnabled = isBiometricEnabled,
+                autoLockTimeout = autoLockTimeout,
+                lastBackgroundTimeMillis = lastBackgroundTimeMillis,
                 totalXp = totalXp
             )
         }
@@ -154,6 +170,36 @@ class UserPreferencesRepository(private val context: Context) {
         }
     }
 
+    suspend fun updateAppLockEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.IS_APP_LOCK_ENABLED] = enabled
+        }
+    }
+
+    suspend fun updateAppLockPinHash(hash: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.APP_LOCK_PIN_HASH] = hash
+        }
+    }
+
+    suspend fun updateBiometricEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.IS_BIOMETRIC_ENABLED] = enabled
+        }
+    }
+
+    suspend fun updateAutoLockTimeout(timeout: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.AUTO_LOCK_TIMEOUT] = timeout
+        }
+    }
+
+    suspend fun updateLastBackgroundTime(timestamp: Long) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.LAST_BACKGROUND_TIME] = timestamp
+        }
+    }
+
     suspend fun addXp(amount: Int) {
         context.dataStore.edit { preferences ->
             val current = preferences[PreferencesKeys.TOTAL_XP] ?: 0
@@ -177,6 +223,10 @@ class UserPreferencesRepository(private val context: Context) {
         soundEffectsEnabled: Boolean = true,
         swipeRightAction: String = "Complete",
         swipeLeftAction: String = "Delete",
+        isAppLockEnabled: Boolean = false,
+        appLockPinHash: String = "",
+        isBiometricEnabled: Boolean = true,
+        autoLockTimeout: String = "Immediately",
         totalXp: Int = 0
     ) {
         context.dataStore.edit { preferences ->
@@ -191,6 +241,10 @@ class UserPreferencesRepository(private val context: Context) {
             preferences[PreferencesKeys.SOUND_EFFECTS_ENABLED] = soundEffectsEnabled
             preferences[PreferencesKeys.SWIPE_RIGHT_ACTION] = swipeRightAction
             preferences[PreferencesKeys.SWIPE_LEFT_ACTION] = swipeLeftAction
+            preferences[PreferencesKeys.IS_APP_LOCK_ENABLED] = isAppLockEnabled
+            preferences[PreferencesKeys.APP_LOCK_PIN_HASH] = appLockPinHash
+            preferences[PreferencesKeys.IS_BIOMETRIC_ENABLED] = isBiometricEnabled
+            preferences[PreferencesKeys.AUTO_LOCK_TIMEOUT] = autoLockTimeout
             preferences[PreferencesKeys.TOTAL_XP] = totalXp
         }
     }
@@ -209,6 +263,11 @@ data class UserPreferences(
     @SerializedName("soundEffectsEnabled") val soundEffectsEnabled: Boolean = true,
     @SerializedName("swipeRightAction") val swipeRightAction: String = "Complete",
     @SerializedName("swipeLeftAction") val swipeLeftAction: String = "Delete",
+    @SerializedName("isAppLockEnabled") val isAppLockEnabled: Boolean = false,
+    @SerializedName("appLockPinHash") val appLockPinHash: String = "",
+    @SerializedName("isBiometricEnabled") val isBiometricEnabled: Boolean = true,
+    @SerializedName("autoLockTimeout") val autoLockTimeout: String = "Immediately",
+    @SerializedName("lastBackgroundTimeMillis") val lastBackgroundTimeMillis: Long = 0L,
     @SerializedName("totalXp") val totalXp: Int = 0
 ) {
     // Gamification level calculation: Level = (XP / 100) + 1

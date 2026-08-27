@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.sg.taskspace.TaskSpaceApplication
 import com.sg.taskspace.data.Task
 import com.sg.taskspace.data.TaskRepository
+import com.sg.taskspace.util.AppLockHelper
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -93,6 +94,64 @@ class TaskViewModel(
     fun saveSwipeLeftAction(action: String) {
         viewModelScope.launch {
             userPreferencesRepository.updateSwipeLeftAction(action)
+        }
+    }
+
+    // App Lock State
+    private val _isAppLocked = MutableStateFlow(false)
+    val isAppLocked: StateFlow<Boolean> = _isAppLocked.asStateFlow()
+
+    fun checkAndApplyAppLockOnForeground() {
+        viewModelScope.launch {
+            val prefs = userPreferencesRepository.fetchInitialPreferences()
+            if (prefs.isAppLockEnabled && prefs.appLockPinHash.isNotBlank()) {
+                val isExpired = AppLockHelper.isTimeoutExceeded(
+                    lastBackgroundMs = prefs.lastBackgroundTimeMillis,
+                    timeoutOption = prefs.autoLockTimeout
+                )
+                if (isExpired) {
+                    _isAppLocked.value = true
+                }
+            }
+        }
+    }
+
+    fun recordBackgroundTimestamp() {
+        viewModelScope.launch {
+            userPreferencesRepository.updateLastBackgroundTime(System.currentTimeMillis())
+        }
+    }
+
+    fun unlockApp() {
+        _isAppLocked.value = false
+    }
+
+    fun saveAppLockEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateAppLockEnabled(enabled)
+            if (!enabled) {
+                _isAppLocked.value = false
+            }
+        }
+    }
+
+    fun saveAppLockPin(pin: String) {
+        viewModelScope.launch {
+            val hash = AppLockHelper.hashPin(pin)
+            userPreferencesRepository.updateAppLockPinHash(hash)
+            userPreferencesRepository.updateAppLockEnabled(true)
+        }
+    }
+
+    fun saveBiometricEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateBiometricEnabled(enabled)
+        }
+    }
+
+    fun saveAutoLockTimeout(timeout: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateAutoLockTimeout(timeout)
         }
     }
 

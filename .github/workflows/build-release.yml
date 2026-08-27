@@ -3,8 +3,8 @@ name: Android Release
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    # branches:
+    #   - main
     tags:
       - 'v*'
 
@@ -26,18 +26,27 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Decode signing keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > release-key.jks
+
       - name: Build Release APK
         run: ./gradlew assembleRelease
-
-      - name: Find and Rename APK
+      
+      - name: Sign APK
         run: |
-          APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
-          if [ -n "$APK_PATH" ]; then
-            mv "$APK_PATH" app/build/outputs/apk/release/TaskSpace-release.apk
-          else
-            echo "No APK found!"
-            exit 1
-          fi
+          $ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -n 1)/apksigner sign \
+            -ks release-key.jks \
+            -ks-key-alias ${{ secrets.KEY_ALIAS }} \
+            -ks-pass pass:${{ secrets.KEYSTORE_PASSWORD }} \
+            -key-pass pass:${{ secrets.KEY_PASSWORD }} \
+            --out app/build/outputs/apk/release/TaskSpace-release.apk \
+            app/build/outputs/apk/release/app-release-unsigned.apk
+
+      - name: Verify signature
+        run: |
+          $ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -n 1)/apksigner verify --verbose \
+            app/build/outputs/apk/release/TaskSpace-release.apk
 
       - name: Upload APK as artifact
         uses: actions/upload-artifact@v4
@@ -53,4 +62,4 @@ jobs:
       #     files: app/build/outputs/apk/release/TaskSpace-release.apk
       #     generate_release_notes: true
       #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GIT_TOKEN }}
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

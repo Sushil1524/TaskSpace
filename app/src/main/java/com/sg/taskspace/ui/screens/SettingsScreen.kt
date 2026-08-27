@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.sg.taskspace.BuildConfig
 import com.sg.taskspace.ui.viewmodel.TaskViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,6 +40,10 @@ fun SettingsScreen(
     var showFontDialog by remember { mutableStateOf(false) }
     var showPaletteDialog by remember { mutableStateOf(false) }
     var showAutoBackupDialog by remember { mutableStateOf(false) }
+    var showSwipeRightDialog by remember { mutableStateOf(false) }
+    var showSwipeLeftDialog by remember { mutableStateOf(false) }
+    var showPinSetupDialog by remember { mutableStateOf(false) }
+    var showAutoLockTimeoutDialog by remember { mutableStateOf(false) }
 
     val currentTheme = userPreferences?.themeMode ?: "AMOLED Dark"
     val currentFont = userPreferences?.fontFamily ?: "Default"
@@ -233,9 +238,6 @@ fun SettingsScreen(
         )
     }
 
-    var showSwipeRightDialog by remember { mutableStateOf(false) }
-    var showSwipeLeftDialog by remember { mutableStateOf(false) }
-
     val swipeRightAction = userPreferences?.swipeRightAction ?: "Complete"
     val swipeLeftAction = userPreferences?.swipeLeftAction ?: "Edit"
 
@@ -306,6 +308,99 @@ fun SettingsScreen(
             confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { showSwipeLeftDialog = false }) { Text("Cancel") }
+            },
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    val autoLockTimeout = userPreferences?.autoLockTimeout ?: "Immediately"
+
+    // PIN Setup Dialog
+    if (showPinSetupDialog) {
+        var newPin by remember { mutableStateOf("") }
+        var confirmPin by remember { mutableStateOf("") }
+        var pinError by remember { mutableStateOf<String?>(null) }
+
+        AlertDialog(
+            onDismissRequest = { showPinSetupDialog = false },
+            title = { Text("Set 4-Digit Security PIN", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = newPin,
+                        onValueChange = { if (it.length <= 4 && it.all { char -> char.isDigit() }) newPin = it },
+                        label = { Text("4-Digit PIN") },
+                        singleLine = true,
+                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = confirmPin,
+                        onValueChange = { if (it.length <= 4 && it.all { char -> char.isDigit() }) confirmPin = it },
+                        label = { Text("Confirm PIN") },
+                        singleLine = true,
+                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (pinError != null) {
+                        Text(text = pinError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    if (newPin.length != 4) {
+                        pinError = "PIN must be exactly 4 digits"
+                    } else if (newPin != confirmPin) {
+                        pinError = "PINs do not match"
+                    } else {
+                        viewModel.saveAppLockPin(newPin)
+                        showPinSetupDialog = false
+                    }
+                }) { Text("Save PIN") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPinSetupDialog = false }) { Text("Cancel") }
+            },
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    // Auto Lock Timeout Dialog
+    if (showAutoLockTimeoutDialog) {
+        val timeoutOptions = listOf("Immediately", "1 minute", "5 minutes", "15 minutes", "30 minutes")
+        AlertDialog(
+            onDismissRequest = { showAutoLockTimeoutDialog = false },
+            title = { Text("Auto-Lock Timeout", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    timeoutOptions.forEach { timeout ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.saveAutoLockTimeout(timeout)
+                                    showAutoLockTimeoutDialog = false
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(timeout, style = MaterialTheme.typography.bodyLarge)
+                            if (autoLockTimeout == timeout) {
+                                Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showAutoLockTimeoutDialog = false }) { Text("Cancel") }
             },
             shape = RoundedCornerShape(20.dp)
         )
@@ -438,6 +533,71 @@ fun SettingsScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
+            // ── App Lock & Security ──
+            SettingsSectionTitle("App Lock & Security")
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Column {
+                        Text("App Lock", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                        Text(if (userPreferences?.isAppLockEnabled == true) "PIN & Biometric protection active" else "Protect app with PIN or fingerprint", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                Switch(
+                    checked = userPreferences?.isAppLockEnabled ?: false,
+                    onCheckedChange = { enabled ->
+                        if (enabled) {
+                            showPinSetupDialog = true
+                        } else {
+                            viewModel.saveAppLockEnabled(false)
+                        }
+                    }
+                )
+            }
+            if (userPreferences?.isAppLockEnabled == true) {
+                SettingsItem(
+                    icon = Icons.Default.Pin,
+                    title = "Change PIN",
+                    subtitle = "Update 4-digit security PIN",
+                    onClick = { showPinSetupDialog = true },
+                    trailingIcon = Icons.Default.ChevronRight
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Icon(Icons.Default.Fingerprint, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Column {
+                            Text("Biometric Unlock", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                            Text("Use fingerprint or face recognition", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    Switch(
+                        checked = userPreferences?.isBiometricEnabled ?: true,
+                        onCheckedChange = { viewModel.saveBiometricEnabled(it) }
+                    )
+                }
+                SettingsItem(
+                    icon = Icons.Default.Timer,
+                    title = "Auto-Lock Timeout",
+                    subtitle = userPreferences?.autoLockTimeout ?: "Immediately",
+                    onClick = { showAutoLockTimeoutDialog = true },
+                    trailingIcon = Icons.Default.ChevronRight
+                )
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
             // ── Data & Backup ──
             SettingsSectionTitle("Data & Backup")
             Row(
@@ -486,7 +646,7 @@ fun SettingsScreen(
             SettingsItem(
                 icon = Icons.Default.Info,
                 title = "Version",
-                subtitle = "v1.3.1 — TaskSpace",
+                subtitle = "v${BuildConfig.VERSION_NAME} - TaskSpace",  
                 onClick = { }
             )
         }

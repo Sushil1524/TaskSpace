@@ -1,8 +1,17 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     // alias(libs.plugins.kotlin.android) // Redundant with AGP 9.0+ built-in Kotlin support
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+}
+
+val keystorePropertiesFile = rootProject.file("keys/keystore.properties")
+val keystoreProperties = Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 android {
@@ -14,15 +23,39 @@ android {
         minSdk = 31
         targetSdk = 36
         versionCode = 1
-        versionName = "1.3.1"
+        versionName = "1.3.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        create("release") {
+            val keyFile = rootProject.file("keys/android-sign-keys-new.jks").takeIf { it.exists() }
+                ?: rootProject.file(keystoreProperties.getProperty("storeFile") ?: "keys/release.jks")
+
+            if (keyFile.exists()) {
+                storeFile = keyFile
+                storePassword = System.getenv("STORE_PASSWORD")
+                    ?: keystoreProperties.getProperty("storePassword")
+                    ?: project.findProperty("STORE_PASSWORD")?.toString()
+                    ?: ""
+                keyAlias = System.getenv("KEY_ALIAS")
+                    ?: keystoreProperties.getProperty("keyAlias")
+                    ?: project.findProperty("KEY_ALIAS")?.toString()
+                    ?: ""
+                keyPassword = System.getenv("KEY_PASSWORD")
+                    ?: keystoreProperties.getProperty("keyPassword")
+                    ?: project.findProperty("KEY_PASSWORD")?.toString()
+                    ?: storePassword
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -36,6 +69,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     buildToolsVersion = "36.0.0"
 }
@@ -72,8 +106,9 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
-    // DataStore
+    // DataStore & Security
     implementation("androidx.datastore:datastore-preferences:1.2.1")
+    implementation("androidx.biometric:biometric:1.1.0")
     implementation("com.google.code.gson:gson:2.13.2")
 
     testImplementation(libs.junit)

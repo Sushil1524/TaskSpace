@@ -27,6 +27,11 @@
 - Set month-end or custom goal deadlines with visual progress meters.
 - Filter between active and completed targets to stay aligned with long-term aspirations.
 
+### **Optional App Lock — PIN + Biometric Security**
+- **PIN & Biometric Unlock:** Secure your tasks, journals, and goals using a **4-Digit PIN** or native **Biometric Fingerprint / Face Recognition**.
+- **Configurable Auto-Lock Timeout:** Set auto-lock sensitivity (**Immediately**, **1 minute**, **5 minutes**, **15 minutes**, **30 minutes**).
+- **Hashed Security:** PINs are stored securely using salted **SHA-256** hashing.
+
 ### **Secure AES-256 Encrypted Local Backups**
 - **AES Encryption:** Toggle **Secure Backup** in Settings to encrypt exported JSON backups using AES-256 encryption (`TASKSPACE_ENCRYPTED_V1:` payload format).
 - **Automated Local Backups:** Schedule automated background exports (**Daily**, **Weekly**, or **Off**) saved directly to secure internal app storage.
@@ -56,7 +61,6 @@ TaskSpace follows Android's recommended **MVVM (Model-View-ViewModel)** architec
 | **Async & Reactive** | Kotlin Coroutines, StateFlow, SharedFlow |
 | **Navigation** | Jetpack Compose Navigation (`NavHost`, `NavController`) |
 | **Scheduling** | Android `AlarmManager`, `PendingIntent`, `BroadcastReceiver` |
-| **Widget Engine** | Android `AppWidgetProvider` + `RemoteViews` |
 | **JSON Serialization** | Gson |
 | **Build & Automation** | Gradle Kotlin DSL, GitHub Actions CI/CD |
 
@@ -93,16 +97,38 @@ After compilation finishes, your Debug APK will be generated at:
 app/build/outputs/apk/debug/app-debug.apk
 ```
 
-### 3. Build Release APK Locally
-To build an optimized production APK:
+### 3. Build Signed Release APK Locally
+To build an optimized, signed production APK:
 
+1. Configure your release keystore credentials in `keys/keystore.properties`:
+```properties
+storeFile=keys/android-sign-keys-new.jks
+storePassword=your_store_password
+keyAlias=your_key_alias
+keyPassword=your_key_password
+```
+
+2. Run the release build command:
 ```bash
 .\gradlew assembleRelease
 ```
 
-The unsigned Release APK will be created at:
+The signed Release APK will be created at:
 ```
-app/build/outputs/apk/release/app-release-unsigned.apk
+app/build/outputs/apk/release/app-release.apk
+```
+
+### 4. Verify Release APK Signature
+To verify if your generated Release APK is properly signed with your keystore:
+
+**Using `apksigner` (Android SDK Tool):**
+```powershell
+& "$env:LOCALAPPDATA\Android\Sdk\build-tools\36.0.0\apksigner.bat" verify --verbose app\build\outputs\apk\release\app-release.apk
+```
+
+**Using `keytool` (Inspect Certificate & SHA-256):**
+```powershell
+& "C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe" -printcert -jarfile app\build\outputs\apk\release\app-release.apk
 ```
 
 ---
