@@ -1,5 +1,9 @@
 package com.sg.taskspace.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,11 +19,15 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -70,37 +78,42 @@ fun TaskCard(
         else task.tags.split(",").map { it.trim() }.filter { it.isNotBlank() }
     }
 
+    // ── Animated checkbox visual feedback ──
+    val checkScale by animateFloatAsState(
+        targetValue = if (task.isCompleted) 1.2f else 1.0f,
+        animationSpec = spring(dampingRatio = 0.4f, stiffness = 500f),
+        label = "checkScale"
+    )
+    val checkBg by animateColorAsState(
+        targetValue = if (task.isCompleted) priorityColor else Color.Transparent,
+        animationSpec = tween(200),
+        label = "checkBg"
+    )
+    val checkBorder by animateColorAsState(
+        targetValue = if (task.isCompleted) priorityColor else priorityColor.copy(alpha = 0.6f),
+        animationSpec = tween(200),
+        label = "checkBorder"
+    )
+
+    var hasHandledSwipe by remember(task.id, task.isCompleted) { mutableStateOf(false) }
+
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { dismissValue ->
-            when (dismissValue) {
-                SwipeToDismissBoxValue.StartToEnd -> {
-                    when (swipeRightAction) {
-                        "Complete" -> {
-                            val nextState = !task.isCompleted
-                            if (nextState) AudioHapticHelper.playTaskCompleteSoundAndHaptic(context, haptic)
-                            onCheckedChange(nextState)
-                        }
-                        "Delete" -> onDelete()
-                        "Edit" -> onClick()
-                        "Snooze" -> onSnooze?.invoke()
+            if (!hasHandledSwipe && dismissValue != SwipeToDismissBoxValue.Settled) {
+                hasHandledSwipe = true
+                val action = if (dismissValue == SwipeToDismissBoxValue.StartToEnd) swipeRightAction else swipeLeftAction
+                when (action) {
+                    "Complete" -> {
+                        val nextState = !task.isCompleted
+                        if (nextState) AudioHapticHelper.playTaskCompleteSoundAndHaptic(context, haptic)
+                        onCheckedChange(nextState)
                     }
-                    false
+                    "Delete" -> onDelete()
+                    "Edit" -> onClick()
+                    "Snooze" -> onSnooze?.invoke()
                 }
-                SwipeToDismissBoxValue.EndToStart -> {
-                    when (swipeLeftAction) {
-                        "Complete" -> {
-                            val nextState = !task.isCompleted
-                            if (nextState) AudioHapticHelper.playTaskCompleteSoundAndHaptic(context, haptic)
-                            onCheckedChange(nextState)
-                        }
-                        "Delete" -> onDelete()
-                        "Edit" -> onClick()
-                        "Snooze" -> onSnooze?.invoke()
-                    }
-                    false
-                }
-                SwipeToDismissBoxValue.Settled -> false
             }
+            false
         }
     )
 
@@ -179,17 +192,14 @@ fun TaskCard(
                         .fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Circular Checkbox
+                    // Animated Circular Checkbox
                     Box(
                         modifier = Modifier
                             .size(24.dp)
+                            .scale(checkScale)
                             .clip(CircleShape)
-                            .border(
-                                width = 2.dp,
-                                color = if (task.isCompleted) priorityColor else priorityColor.copy(alpha = 0.6f),
-                                shape = CircleShape
-                            )
-                            .background(if (task.isCompleted) priorityColor else Color.Transparent)
+                            .border(width = 2.dp, color = checkBorder, shape = CircleShape)
+                            .background(checkBg)
                             .clickable {
                                 val nextState = !task.isCompleted
                                 if (nextState) {
@@ -258,7 +268,7 @@ fun TaskCard(
                                     )
                                 }
 
-                                // Project Chip (if belongs to a project)
+                                // Project Chip
                                 if (!projectName.isNullOrBlank()) {
                                     Surface(
                                         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
@@ -286,7 +296,7 @@ fun TaskCard(
                                     }
                                 }
 
-                                // Smart Tag chips with Icon
+                                // Smart Tag chips
                                 for (tag in tagsList.take(2)) {
                                     val tagStyle = TagStyleHelper.getStyleForTag(tag)
                                     Surface(

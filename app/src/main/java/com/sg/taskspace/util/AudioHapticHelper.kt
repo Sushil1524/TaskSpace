@@ -21,12 +21,12 @@ object AudioHapticHelper {
     }
 
     fun playTaskCompleteSoundAndHaptic(context: Context, hapticFeedback: HapticFeedback? = null, soundEnabled: Boolean = true) {
-        // Compose Haptic Feedback
+        // 1. Compose UI Haptic Feedback
         runCatching {
             hapticFeedback?.performHapticFeedback(HapticFeedbackType.LongPress)
         }
 
-        // Hardware Vibrator
+        // 2. Hardware Vibrator (Guaranteed tactile pulse on modern Android hardware)
         runCatching {
             val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
@@ -39,21 +39,21 @@ object AudioHapticHelper {
                 if (v.hasVibrator()) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         try {
-                            v.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK))
+                            v.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK))
                         } catch (e: Exception) {
-                            v.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
+                            v.vibrate(VibrationEffect.createOneShot(70, VibrationEffect.DEFAULT_AMPLITUDE))
                         }
                     } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        v.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
+                        v.vibrate(VibrationEffect.createOneShot(70, VibrationEffect.DEFAULT_AMPLITUDE))
                     } else {
                         @Suppress("DEPRECATION")
-                        v.vibrate(50)
+                        v.vibrate(70)
                     }
                 }
             }
         }
 
-        // Sound effect (Plays via STREAM_MUSIC for maximum reliability)
+        // 3. Sound effect (Plays via STREAM_MUSIC when sound enabled)
         if (soundEnabled) {
             runCatching {
                 if (toneGenerator == null) {

@@ -9,6 +9,7 @@ import com.sg.taskspace.TaskSpaceApplication
 import com.sg.taskspace.data.Task
 import com.sg.taskspace.data.TaskRepository
 import com.sg.taskspace.util.AppLockHelper
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.IsoFields
@@ -32,19 +34,24 @@ class TaskViewModel(
         viewModelScope.launch {
             dataTransferManager.performAutoBackupIfNeeded()
         }
+        checkAndApplyAppLockOnForeground()
     }
 
     fun exportData(uri: android.net.Uri, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
             val result = dataTransferManager.exportData(uri)
-            onResult(result.isSuccess)
+            withContext(Dispatchers.Main) {
+                onResult(result.isSuccess)
+            }
         }
     }
 
     fun importData(uri: android.net.Uri, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
             val result = dataTransferManager.importData(uri)
-            onResult(result.isSuccess)
+            withContext(Dispatchers.Main) {
+                onResult(result.isSuccess)
+            }
         }
     }
 

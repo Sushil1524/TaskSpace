@@ -24,6 +24,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.provider.Settings
+import androidx.core.content.ContextCompat
 import com.sg.taskspace.BuildConfig
 import com.sg.taskspace.ui.viewmodel.TaskViewModel
 
@@ -44,6 +48,7 @@ fun SettingsScreen(
     var showSwipeLeftDialog by remember { mutableStateOf(false) }
     var showPinSetupDialog by remember { mutableStateOf(false) }
     var showAutoLockTimeoutDialog by remember { mutableStateOf(false) }
+    var showPermissionDeniedDialog by remember { mutableStateOf(false) }
 
     val currentTheme = userPreferences?.themeMode ?: "AMOLED Dark"
     val currentFont = userPreferences?.fontFamily ?: "Default"
@@ -57,11 +62,11 @@ fun SettingsScreen(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
         viewModel.saveNotificationsEnabled(granted)
-        Toast.makeText(
-            context,
-            if (granted) "Notifications enabled!" else "Notifications permission denied.",
-            Toast.LENGTH_SHORT
-        ).show()
+        if (!granted) {
+            showPermissionDeniedDialog = true
+        } else {
+            Toast.makeText(context, "Notifications enabled!", Toast.LENGTH_SHORT).show()
+        }
     }
 
     // Export Launcher
@@ -406,6 +411,38 @@ fun SettingsScreen(
         )
     }
 
+    // Permission Denied Rationale Dialog
+    if (showPermissionDeniedDialog) {
+        AlertDialog(
+            onDismissRequest = { showPermissionDeniedDialog = false },
+            title = { Text("Notification Permission Required", fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "TaskSpace requires notification permission to trigger scheduled task reminders. Please grant permission in System Settings.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    showPermissionDeniedDialog = false
+                    val intent = Intent(
+                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.fromParts("package", context.packageName, null)
+                    )
+                    context.startActivity(intent)
+                }) {
+                    Text("Open Settings")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPermissionDeniedDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -484,10 +521,23 @@ fun SettingsScreen(
                 Switch(
                     checked = notificationsEnabled,
                     onCheckedChange = { enabled ->
-                        if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        if (enabled) {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                val hasPermission = ContextCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.POST_NOTIFICATIONS
+                                ) == PackageManager.PERMISSION_GRANTED
+
+                                if (hasPermission) {
+                                    viewModel.saveNotificationsEnabled(true)
+                                } else {
+                                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                }
+                            } else {
+                                viewModel.saveNotificationsEnabled(true)
+                            }
                         } else {
-                            viewModel.saveNotificationsEnabled(enabled)
+                            viewModel.saveNotificationsEnabled(false)
                         }
                     }
                 )
@@ -630,13 +680,25 @@ fun SettingsScreen(
                 icon = Icons.Default.Backup,
                 title = "Backup Data Now",
                 subtitle = "Export tasks, journal, habits, goals & projects to a JSON file",
-                onClick = { exportLauncher.launch("taskspace_backup_${System.currentTimeMillis()}.json") }
+                onClick = {
+                    runCatching {
+                        exportLauncher.launch("taskspace_backup_${System.currentTimeMillis()}.json")
+                    }.onFailure {
+                        Toast.makeText(context, "System File Picker not available on this device", Toast.LENGTH_LONG).show()
+                    }
+                }
             )
             SettingsItem(
                 icon = Icons.Default.Restore,
                 title = "Restore Data",
                 subtitle = "Import tasks, journal, habits, goals & projects from a JSON file",
-                onClick = { importLauncher.launch(arrayOf("application/json")) }
+                onClick = {
+                    runCatching {
+                        importLauncher.launch(arrayOf("application/json", "*/*"))
+                    }.onFailure {
+                        Toast.makeText(context, "System File Picker not available on this device", Toast.LENGTH_LONG).show()
+                    }
+                }
             )
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
