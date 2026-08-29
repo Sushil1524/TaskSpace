@@ -2,7 +2,8 @@ package com.sg.taskspace.util
 
 import android.content.Context
 import android.media.AudioManager
-import android.media.ToneGenerator
+import android.media.Ringtone
+import android.media.RingtoneManager
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -12,54 +13,77 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 
 object AudioHapticHelper {
 
-    private var toneGenerator: ToneGenerator? = null
+    private var cachedRingtone: Ringtone? = null
 
-    init {
-        runCatching {
-            toneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
-        }
+    fun ensureInitialized(context: Context) {
+        if (cachedRingtone != null) return
+        try {
+            val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            cachedRingtone = RingtoneManager.getRingtone(context.applicationContext, uri)
+        } catch (_: Exception) { }
     }
 
-    fun playTaskCompleteSoundAndHaptic(context: Context, hapticFeedback: HapticFeedback? = null, soundEnabled: Boolean = true) {
-        // 1. Compose UI Haptic Feedback
-        runCatching {
-            hapticFeedback?.performHapticFeedback(HapticFeedbackType.LongPress)
+    fun playTaskCompleteSoundAndHaptic(
+        context: Context,
+        hapticFeedback: HapticFeedback? = null,
+        soundEnabled: Boolean = true,
+        hapticEnabled: Boolean = true
+    ) {
+        if (!soundEnabled && !hapticEnabled) return
+
+        // 1. Compose haptic feedback (visual + tactile layer)
+        if (hapticEnabled) {
+            runCatching {
+                hapticFeedback?.performHapticFeedback(HapticFeedbackType.LongPress)
+            }
         }
 
-        // 2. Hardware Vibrator (Guaranteed tactile pulse on modern Android hardware)
-        runCatching {
-            val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
-            } else {
-                @Suppress("DEPRECATION")
-                context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-            }
+        // 2. Hardware vibrator — works even in silent / vibrate-only mode
+        if (hapticEnabled) {
+            runCatching {
+                val vibrator: Vibrator? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)
+                        ?.defaultVibrator
+                } else {
+                    @Suppress("DEPRECATION")
+                    context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+                }
 
-            vibrator?.let { v ->
-                if (v.hasVibrator()) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        try {
-                            v.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK))
-                        } catch (e: Exception) {
-                            v.vibrate(VibrationEffect.createOneShot(70, VibrationEffect.DEFAULT_AMPLITUDE))
+                vibrator?.let { v ->
+                    if (v.hasVibrator()) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            // Pleasant two-pulse "done" pattern
+                            v.vibrate(
+                                VibrationEffect.createWaveform(
+                                    longArrayOf(0L, 40L, 60L, 80L),
+                                    intArrayOf(0, 160, 0, 100),
+                                    -1
+                                )
+                            )
+                        } else {
+                            @Suppress("DEPRECATION")
+                            v.vibrate(70L)
                         }
-                    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        v.vibrate(VibrationEffect.createOneShot(70, VibrationEffect.DEFAULT_AMPLITUDE))
-                    } else {
-                        @Suppress("DEPRECATION")
-                        v.vibrate(70)
                     }
                 }
             }
         }
 
-        // 3. Sound effect (Plays via STREAM_MUSIC when sound enabled)
+        // 3. System notification chime — only in NORMAL or VIBRATE mode (not SILENT)
         if (soundEnabled) {
             runCatching {
-                if (toneGenerator == null) {
-                    toneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
+                val audioManager =
+                    context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+                val ringerMode = audioManager?.ringerMode ?: AudioManager.RINGER_MODE_NORMAL
+                if (ringerMode == AudioManager.RINGER_MODE_NORMAL) {
+                    ensureInitialized(context)
+                    val ringtone = cachedRingtone ?: run {
+                        val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                        RingtoneManager.getRingtone(context.applicationContext, uri)
+                            ?.also { cachedRingtone = it }
+                    }
+                    ringtone?.play()
                 }
-                toneGenerator?.startTone(ToneGenerator.TONE_PROP_BEEP, 150)
             }
         }
     }

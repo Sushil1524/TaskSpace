@@ -76,7 +76,7 @@ object NotificationHelper {
         }
         val pendingIntent = PendingIntent.getBroadcast(
             context,
-            id.hashCode(),
+            id.hashCode().and(0xFFFF),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -97,7 +97,7 @@ object NotificationHelper {
         val intent = Intent(context, NotificationReceiver::class.java)
         val pendingIntent = PendingIntent.getBroadcast(
             context,
-            id.hashCode(),
+            id.hashCode().and(0xFFFF),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

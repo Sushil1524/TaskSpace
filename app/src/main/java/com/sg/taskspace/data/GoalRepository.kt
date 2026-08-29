@@ -13,4 +13,8 @@ class GoalRepository(private val goalDao: GoalDao) {
     suspend fun deleteGoal(goal: Goal) {
         goalDao.deleteGoal(goal)
     }
+
+    suspend fun deleteAllGoals() = goalDao.deleteAllGoals()
+
+    suspend fun getAllGoalsSync(): List<Goal> = goalDao.getAllGoalsSync()
 }

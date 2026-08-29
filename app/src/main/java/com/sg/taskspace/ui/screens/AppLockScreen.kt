@@ -28,7 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.fragment.app.FragmentActivity
+import androidx.appcompat.app.AppCompatActivity
 import com.sg.taskspace.util.AppLockHelper
 
 @Composable
@@ -46,33 +46,43 @@ fun AppLockScreen(
 
     fun triggerBiometricPrompt() {
         if (!isBiometricEnabled) return
-        val activity = context as? FragmentActivity ?: return
+        val activity = context as? AppCompatActivity ?: return
         val executor = ContextCompat.getMainExecutor(context)
         val biometricManager = BiometricManager.from(context)
 
-        val canAuthenticate = biometricManager.canAuthenticate(
-            BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.BIOMETRIC_WEAK
-        )
+        val authenticators = BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.BIOMETRIC_WEAK
+        val canAuthenticate = biometricManager.canAuthenticate(authenticators)
 
-        if (canAuthenticate == BiometricManager.BIOMETRIC_SUCCESS) {
-            val prompt = BiometricPrompt(
-                activity,
-                executor,
-                object : BiometricPrompt.AuthenticationCallback() {
-                    override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                        super.onAuthenticationSucceeded(result)
-                        onUnlockSuccess()
+        when (canAuthenticate) {
+            BiometricManager.BIOMETRIC_SUCCESS -> {
+                val prompt = BiometricPrompt(
+                    activity,
+                    executor,
+                    object : BiometricPrompt.AuthenticationCallback() {
+                        override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                            super.onAuthenticationSucceeded(result)
+                            onUnlockSuccess()
+                        }
                     }
-                }
-            )
+                )
 
-            val promptInfo = BiometricPrompt.PromptInfo.Builder()
-                .setTitle("TaskSpace Locked")
-                .setSubtitle("Use your fingerprint or face to unlock")
-                .setNegativeButtonText("Use PIN")
-                .build()
+                val promptInfo = BiometricPrompt.PromptInfo.Builder()
+                    .setTitle("TaskSpace Locked")
+                    .setSubtitle("Use your fingerprint or face to unlock")
+                    .setNegativeButtonText("Use PIN")
+                    .build()
 
-            prompt.authenticate(promptInfo)
+                prompt.authenticate(promptInfo)
+            }
+            BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> {
+                android.widget.Toast.makeText(context, "No fingerprint/face enrolled on device", android.widget.Toast.LENGTH_SHORT).show()
+            }
+            BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE -> {
+                android.widget.Toast.makeText(context, "Biometric hardware not available", android.widget.Toast.LENGTH_SHORT).show()
+            }
+            else -> {
+                android.widget.Toast.makeText(context, "Biometric authentication unavailable", android.widget.Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

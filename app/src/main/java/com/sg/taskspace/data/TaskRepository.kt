@@ -28,4 +28,6 @@ class TaskRepository(private val taskDao: TaskDao) {
     fun getTaskById(taskId: String): Flow<Task?> = taskDao.getTaskById(taskId)
 
     fun getRepeatingTasks(): Flow<List<Task>> = taskDao.getRepeatingTasks()
+
+    suspend fun deleteAllTasks() = taskDao.deleteAllTasks()
 }

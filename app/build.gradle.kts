@@ -20,12 +20,16 @@ android {
 
     defaultConfig {
         applicationId = "com.sg.taskspace"
-        minSdk = 31
+        minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "1.3.3.0"
+        versionName = "1.3.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        val backupSecretKey = keystoreProperties.getProperty("backupSecretKey")
+            ?: project.findProperty("BACKUP_SECRET_KEY")?.toString() ?: throw IllegalStateException("BACKUP_SECRET_KEY not found")
+        buildConfigField("String", "BACKUP_SECRET_KEY", "\"$backupSecretKey\"")
     }
 
     signingConfigs {
@@ -87,6 +91,8 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation("androidx.activity:activity-ktx:1.10.1")
+    implementation("androidx.fragment:fragment-ktx:1.8.8")
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
@@ -114,5 +120,6 @@ dependencies {
     // DataStore & Security
     implementation("androidx.datastore:datastore-preferences:1.2.1")
     implementation("androidx.biometric:biometric:1.1.0")
+    implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.code.gson:gson:2.13.2")
 }

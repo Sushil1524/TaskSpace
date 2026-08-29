@@ -1,6 +1,8 @@
 package com.sg.taskspace.ui.components
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -19,6 +21,7 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,8 +30,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
@@ -57,7 +62,8 @@ fun TaskCard(
     onSnooze: (() -> Unit)? = null,
     projectName: String? = null,
     swipeRightAction: String = "Complete",
-    swipeLeftAction: String = "Delete"
+    swipeLeftAction: String = "Delete",
+    soundEffectsEnabled: Boolean = true
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
@@ -76,6 +82,24 @@ fun TaskCard(
     val tagsList = remember(task.tags) {
         if (task.tags.isBlank()) emptyList()
         else task.tags.split(",").map { it.trim() }.filter { it.isNotBlank() }
+    }
+
+    // ── Completion Radial Ripple Animation ──
+    val rippleProgress = remember { Animatable(0f) }
+    var isRippling by remember { mutableStateOf(false) }
+    LaunchedEffect(task.isCompleted) {
+        if (task.isCompleted) {
+            isRippling = true
+            rippleProgress.snapTo(0f)
+            rippleProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 650, easing = LinearOutSlowInEasing)
+            )
+            isRippling = false
+        } else {
+            isRippling = false
+            rippleProgress.snapTo(0f)
+        }
     }
 
     // ── Animated checkbox visual feedback ──
@@ -97,6 +121,7 @@ fun TaskCard(
 
     var hasHandledSwipe by remember(task.id, task.isCompleted) { mutableStateOf(false) }
 
+    @Suppress("DEPRECATION")
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { dismissValue ->
             if (!hasHandledSwipe && dismissValue != SwipeToDismissBoxValue.Settled) {
@@ -105,7 +130,14 @@ fun TaskCard(
                 when (action) {
                     "Complete" -> {
                         val nextState = !task.isCompleted
-                        if (nextState) AudioHapticHelper.playTaskCompleteSoundAndHaptic(context, haptic)
+                        if (nextState) {
+                            AudioHapticHelper.playTaskCompleteSoundAndHaptic(
+                                context = context,
+                                hapticFeedback = haptic,
+                                soundEnabled = soundEffectsEnabled,
+                                hapticEnabled = soundEffectsEnabled
+                            )
+                        }
                         onCheckedChange(nextState)
                     }
                     "Delete" -> onDelete()
@@ -167,201 +199,236 @@ fun TaskCard(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .alpha(if (task.isCompleted) 0.65f else 1f)
-                .clickable(onClick = onClick),
+                .clickable(onClick = onClick)
+                .drawWithContent {
+                    drawContent()
+                    if (isRippling) {
+                        val progress = rippleProgress.value
+                        val maxRadius = size.width * 1.25f
+                        val radius = maxRadius * progress
+                        val alpha = ((1f - progress) * 0.65f).coerceIn(0f, 0.65f)
+                        val origin = androidx.compose.ui.geometry.Offset(
+                            x = 28.dp.toPx(),
+                            y = size.height / 2f
+                        )
+                        clipRect {
+                            drawCircle(
+                                color = SecondaryEmerald.copy(alpha = alpha),
+                                radius = radius,
+                                center = origin
+                            )
+                        }
+                    }
+                },
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant
             ),
             shape = RoundedCornerShape(16.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
-            Row(modifier = Modifier.fillMaxWidth()) {
-                // Priority accent bar on left edge
-                Box(
-                    modifier = Modifier
-                        .width(4.dp)
-                        .fillMaxHeight()
-                        .background(
-                            color = if (!task.isCompleted) priorityColor else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                            shape = RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)
-                        )
-                )
-                Row(
-                    modifier = Modifier
-                        .padding(12.dp)
-                        .fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Animated Circular Checkbox
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    // Priority accent bar on left edge
                     Box(
                         modifier = Modifier
-                            .size(24.dp)
-                            .scale(checkScale)
-                            .clip(CircleShape)
-                            .border(width = 2.dp, color = checkBorder, shape = CircleShape)
-                            .background(checkBg)
-                            .clickable {
-                                val nextState = !task.isCompleted
-                                if (nextState) {
-                                    AudioHapticHelper.playTaskCompleteSoundAndHaptic(context, haptic)
-                                }
-                                onCheckedChange(nextState)
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (task.isCompleted) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(14.dp)
+                            .width(4.dp)
+                            .fillMaxHeight()
+                            .background(
+                                color = if (!task.isCompleted) priorityColor else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                shape = RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)
                             )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = task.title,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.SemiBold,
-                            textDecoration = if (task.isCompleted) TextDecoration.LineThrough else null,
-                            color = if (task.isCompleted) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                                    else MaterialTheme.colorScheme.onSurface,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-
-                        if (!task.isCompleted) {
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                    )
+                    Row(
+                        modifier = Modifier
+                            .padding(12.dp)
+                            .fillMaxWidth()
+                            .alpha(if (task.isCompleted) 0.6f else 1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Animated Circular Checkbox — roomier bounds & Surface BorderStroke prevent left cutoff
+                        Box(
+                            modifier = Modifier
+                                .scale(checkScale)
+                                .size(28.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Surface(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clickable {
+                                        val nextState = !task.isCompleted
+                                        if (nextState) {
+                                            AudioHapticHelper.playTaskCompleteSoundAndHaptic(
+                                                context = context,
+                                                hapticFeedback = haptic,
+                                                soundEnabled = soundEffectsEnabled,
+                                                hapticEnabled = soundEffectsEnabled
+                                            )
+                                        }
+                                        onCheckedChange(nextState)
+                                    },
+                                shape = CircleShape,
+                                color = checkBg,
+                                border = androidx.compose.foundation.BorderStroke(2.dp, checkBorder)
                             ) {
-                                // Priority chip
-                                Surface(
-                                    color = priorityContainerColor.copy(alpha = 0.6f),
-                                    shape = RoundedCornerShape(6.dp)
-                                ) {
-                                    Text(
-                                        text = task.priority,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.SemiBold,
-                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
-                                        color = priorityColor,
-                                        fontSize = 10.sp
-                                    )
-                                }
-
-                                // Category chip
-                                Surface(
-                                    color = MaterialTheme.colorScheme.surface,
-                                    shape = RoundedCornerShape(6.dp)
-                                ) {
-                                    Text(
-                                        text = task.category,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        fontSize = 10.sp
-                                    )
-                                }
-
-                                // Project Chip
-                                if (!projectName.isNullOrBlank()) {
-                                    Surface(
-                                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                                        shape = RoundedCornerShape(6.dp)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(3.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.FolderOpen,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(10.dp),
-                                                tint = MaterialTheme.colorScheme.primary
-                                            )
-                                            Text(
-                                                text = projectName,
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.primary,
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.SemiBold
-                                            )
-                                        }
+                                Box(contentAlignment = Alignment.Center) {
+                                    if (task.isCompleted) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(13.dp)
+                                        )
                                     }
                                 }
+                            }
+                        }
 
-                                // Smart Tag chips
-                                for (tag in tagsList.take(2)) {
-                                    val tagStyle = TagStyleHelper.getStyleForTag(tag)
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = task.title,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                textDecoration = if (task.isCompleted) TextDecoration.LineThrough else null,
+                                color = if (task.isCompleted) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                        else MaterialTheme.colorScheme.onSurface,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+
+                            if (!task.isCompleted) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // Priority chip
                                     Surface(
-                                        color = tagStyle.color.copy(alpha = 0.15f),
+                                        color = priorityContainerColor.copy(alpha = 0.6f),
                                         shape = RoundedCornerShape(6.dp)
                                     ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                        Text(
+                                            text = task.priority,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.SemiBold,
+                                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                                            color = priorityColor,
+                                            fontSize = 10.sp
+                                        )
+                                    }
+
+                                    // Category chip
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.surface,
+                                        shape = RoundedCornerShape(6.dp)
+                                    ) {
+                                        Text(
+                                            text = task.category,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontSize = 10.sp
+                                        )
+                                    }
+
+                                    // Project Chip
+                                    if (!projectName.isNullOrBlank()) {
+                                        Surface(
+                                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                                            shape = RoundedCornerShape(6.dp)
                                         ) {
-                                            Icon(
-                                                imageVector = tagStyle.icon,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(10.dp),
-                                                tint = tagStyle.color
-                                            )
-                                            Text(
-                                                text = tag,
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = tagStyle.color,
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.SemiBold
-                                            )
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.FolderOpen,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(10.dp),
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+                                                Text(
+                                                    text = projectName,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                            }
                                         }
                                     }
-                                }
 
-                                // Duration badge
-                                if (task.estimatedMinutes > 0) {
-                                    Surface(
-                                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
-                                        shape = RoundedCornerShape(6.dp)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                    // Smart Tag chips
+                                    for (tag in tagsList.take(2)) {
+                                        val tagStyle = TagStyleHelper.getStyleForTag(tag)
+                                        Surface(
+                                            color = tagStyle.color.copy(alpha = 0.15f),
+                                            shape = RoundedCornerShape(6.dp)
                                         ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Schedule,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(10.dp),
-                                                tint = MaterialTheme.colorScheme.secondary
-                                            )
-                                            Text(
-                                                text = formatMinutes(task.estimatedMinutes),
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.secondary,
-                                                fontSize = 10.sp
-                                            )
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = tagStyle.icon,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(10.dp),
+                                                    tint = tagStyle.color
+                                                )
+                                                Text(
+                                                    text = tag,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = tagStyle.color,
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    // Duration badge
+                                    if (task.estimatedMinutes > 0) {
+                                        Surface(
+                                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                                            shape = RoundedCornerShape(6.dp)
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Schedule,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(10.dp),
+                                                    tint = MaterialTheme.colorScheme.secondary
+                                                )
+                                                Text(
+                                                    text = formatMinutes(task.estimatedMinutes),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.secondary,
+                                                    fontSize = 10.sp
+                                                )
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
-                    }
 
-                    IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
-                            modifier = Modifier.size(18.dp)
-                        )
+                        IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }

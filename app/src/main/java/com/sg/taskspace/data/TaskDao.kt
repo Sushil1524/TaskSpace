@@ -47,6 +47,9 @@ interface TaskDao {
 
     @Query("DELETE FROM tasks WHERE id = :taskId")
     suspend fun deleteTaskById(taskId: String)
+
+    @Query("DELETE FROM tasks")
+    suspend fun deleteAllTasks()
     
     @Query("SELECT COUNT(*) FROM tasks WHERE isCompleted = 1 AND createdForDate = :date")
     fun getCompletedTaskCountForDate(date: String): Flow<Int>

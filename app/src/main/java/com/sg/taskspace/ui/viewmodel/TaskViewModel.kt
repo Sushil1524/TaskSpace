@@ -37,18 +37,44 @@ class TaskViewModel(
         checkAndApplyAppLockOnForeground()
     }
 
-    fun exportData(uri: android.net.Uri, onResult: (Boolean) -> Unit) {
+    fun exportData(uri: android.net.Uri, onResult: (Result<Boolean>) -> Unit) {
         viewModelScope.launch {
             val result = dataTransferManager.exportData(uri)
             withContext(Dispatchers.Main) {
-                onResult(result.isSuccess)
+                onResult(result)
             }
         }
     }
 
-    fun importData(uri: android.net.Uri, onResult: (Boolean) -> Unit) {
+    fun importData(uri: android.net.Uri, onResult: (Result<Boolean>) -> Unit) {
         viewModelScope.launch {
             val result = dataTransferManager.importData(uri)
+            withContext(Dispatchers.Main) {
+                onResult(result)
+            }
+        }
+    }
+
+    /** Phase 1: Read, decrypt, and diff the backup — no writes. */
+    fun previewImport(
+        uri: android.net.Uri,
+        onResult: (Result<com.sg.taskspace.data.BackupDiffResult>) -> Unit
+    ) {
+        viewModelScope.launch {
+            val result = dataTransferManager.previewImport(uri)
+            withContext(Dispatchers.Main) {
+                onResult(result)
+            }
+        }
+    }
+
+    /** Phase 2: Commit the already-parsed backup to the database. */
+    fun importDataFromParsed(
+        backupData: com.sg.taskspace.data.BackupData,
+        onResult: (Boolean) -> Unit
+    ) {
+        viewModelScope.launch {
+            val result = dataTransferManager.importDataFromParsed(backupData)
             withContext(Dispatchers.Main) {
                 onResult(result.isSuccess)
             }
@@ -107,13 +133,15 @@ class TaskViewModel(
     // App Lock State
     private val _isAppLocked = MutableStateFlow(false)
     val isAppLocked: StateFlow<Boolean> = _isAppLocked.asStateFlow()
+    private var lastBackgroundTimeMs: Long = 0L
 
     fun checkAndApplyAppLockOnForeground() {
         viewModelScope.launch {
             val prefs = userPreferencesRepository.fetchInitialPreferences()
             if (prefs.isAppLockEnabled && prefs.appLockPinHash.isNotBlank()) {
+                val bgTime = if (lastBackgroundTimeMs > 0L) lastBackgroundTimeMs else prefs.lastBackgroundTimeMillis
                 val isExpired = AppLockHelper.isTimeoutExceeded(
-                    lastBackgroundMs = prefs.lastBackgroundTimeMillis,
+                    lastBackgroundMs = bgTime,
                     timeoutOption = prefs.autoLockTimeout
                 )
                 if (isExpired) {
@@ -124,13 +152,20 @@ class TaskViewModel(
     }
 
     fun recordBackgroundTimestamp() {
+        val now = System.currentTimeMillis()
+        lastBackgroundTimeMs = now
         viewModelScope.launch {
-            userPreferencesRepository.updateLastBackgroundTime(System.currentTimeMillis())
+            userPreferencesRepository.updateLastBackgroundTime(now)
         }
     }
 
     fun unlockApp() {
         _isAppLocked.value = false
+        val now = System.currentTimeMillis()
+        lastBackgroundTimeMs = now
+        viewModelScope.launch {
+            userPreferencesRepository.updateLastBackgroundTime(now)
+        }
     }
 
     fun saveAppLockEnabled(enabled: Boolean) {

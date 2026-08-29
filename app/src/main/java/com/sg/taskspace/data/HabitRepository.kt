@@ -29,4 +29,10 @@ class HabitRepository(private val habitDao: HabitDao) {
     suspend fun insertHabitLog(log: HabitLog) {
         habitDao.insertHabitLog(log)
     }
+
+    suspend fun deleteAllHabits() = habitDao.deleteAllHabits()
+    suspend fun deleteAllHabitLogs() = habitDao.deleteAllHabitLogs()
+
+    suspend fun getAllHabitsSync(): List<Habit> = habitDao.getAllHabitsSync()
+    suspend fun getAllHabitLogsSync(): List<HabitLog> = habitDao.getAllHabitLogsSync()
 }

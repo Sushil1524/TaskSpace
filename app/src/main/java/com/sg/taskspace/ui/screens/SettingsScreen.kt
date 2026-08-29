@@ -30,6 +30,8 @@ import android.provider.Settings
 import androidx.core.content.ContextCompat
 import com.sg.taskspace.BuildConfig
 import com.sg.taskspace.ui.viewmodel.TaskViewModel
+import com.sg.taskspace.ui.components.BackupDiffDialog
+import com.sg.taskspace.data.BackupDiffResult
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,6 +51,10 @@ fun SettingsScreen(
     var showPinSetupDialog by remember { mutableStateOf(false) }
     var showAutoLockTimeoutDialog by remember { mutableStateOf(false) }
     var showPermissionDeniedDialog by remember { mutableStateOf(false) }
+    // Backup diff state
+    var backupDiffResult by remember { mutableStateOf<BackupDiffResult?>(null) }
+    var isRestoring by remember { mutableStateOf(false) }
+    var pendingRestoreUri by remember { mutableStateOf<android.net.Uri?>(null) }
 
     val currentTheme = userPreferences?.themeMode ?: "AMOLED Dark"
     val currentFont = userPreferences?.fontFamily ?: "Default"
@@ -74,29 +80,65 @@ fun SettingsScreen(
         contract = ActivityResultContracts.CreateDocument("application/json")
     ) { uri: Uri? ->
         uri?.let {
-            viewModel.exportData(it) { success ->
-                Toast.makeText(
-                    context,
-                    if (success) "Backup successful!" else "Backup failed.",
-                    Toast.LENGTH_SHORT
-                ).show()
+            viewModel.exportData(it) { result ->
+                result.fold(
+                    onSuccess = {
+                        Toast.makeText(context, "✅ Backup created successfully!", Toast.LENGTH_SHORT).show()
+                    },
+                    onFailure = { e ->
+                        Toast.makeText(context, "❌ Backup failed: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                    }
+                )
             }
         }
     }
 
-    // Import Launcher
+    // Import Launcher — opens file picker, then shows diff preview before committing
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
-        uri?.let {
-            viewModel.importData(it) { success ->
-                Toast.makeText(
-                    context,
-                    if (success) "Data restored successfully!" else "Restore failed.",
-                    Toast.LENGTH_SHORT
-                ).show()
+        uri?.let { selectedUri ->
+            pendingRestoreUri = selectedUri
+            viewModel.previewImport(selectedUri) { result ->
+                result.fold(
+                    onSuccess = { diff ->
+                        backupDiffResult = diff
+                    },
+                    onFailure = { e ->
+                        Toast.makeText(
+                            context,
+                            "Cannot read backup: ${e.localizedMessage}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                )
             }
         }
+    }
+
+    // ── Backup Diff Preview Dialog ──
+    backupDiffResult?.let { diff ->
+        BackupDiffDialog(
+            diff = diff,
+            isRestoring = isRestoring,
+            onDismiss = {
+                backupDiffResult = null
+                pendingRestoreUri = null
+            },
+            onConfirm = {
+                isRestoring = true
+                viewModel.importDataFromParsed(diff.parsedBackup) { success ->
+                    isRestoring = false
+                    backupDiffResult = null
+                    pendingRestoreUri = null
+                    Toast.makeText(
+                        context,
+                        if (success) "✅ Data restored successfully!" else "❌ Restore failed.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        )
     }
 
     // Theme Picker Dialog
@@ -683,8 +725,9 @@ fun SettingsScreen(
                 onClick = {
                     runCatching {
                         exportLauncher.launch("taskspace_backup_${System.currentTimeMillis()}.json")
-                    }.onFailure {
-                        Toast.makeText(context, "System File Picker not available on this device", Toast.LENGTH_LONG).show()
+                    }.onFailure { e ->
+                        e.printStackTrace()
+                        Toast.makeText(context, "Backup launcher error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
                     }
                 }
             )
@@ -694,9 +737,10 @@ fun SettingsScreen(
                 subtitle = "Import tasks, journal, habits, goals & projects from a JSON file",
                 onClick = {
                     runCatching {
-                        importLauncher.launch(arrayOf("application/json", "*/*"))
-                    }.onFailure {
-                        Toast.makeText(context, "System File Picker not available on this device", Toast.LENGTH_LONG).show()
+                        importLauncher.launch(arrayOf("*/*"))
+                    }.onFailure { e ->
+                        e.printStackTrace()
+                        Toast.makeText(context, "Restore launcher error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
                     }
                 }
             )

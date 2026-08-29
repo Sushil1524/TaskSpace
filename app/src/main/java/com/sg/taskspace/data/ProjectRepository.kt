@@ -15,4 +15,6 @@ class ProjectRepository(private val projectDao: ProjectDao) {
     fun getProjectById(projectId: String): Flow<Project?> = projectDao.getProjectById(projectId)
 
     suspend fun getAllProjectsSync(): List<Project> = projectDao.getAllProjectsSync()
+
+    suspend fun deleteAllProjects() = projectDao.deleteAllProjects()
 }

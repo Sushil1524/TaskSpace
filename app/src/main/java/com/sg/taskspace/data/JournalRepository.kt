@@ -16,4 +16,8 @@ class JournalRepository(private val journalDao: JournalDao) {
     suspend fun deleteJournalEntry(entry: JournalEntry) {
         journalDao.deleteJournalEntry(entry)
     }
+
+    suspend fun deleteAllJournalEntries() = journalDao.deleteAllJournalEntries()
+
+    suspend fun getAllJournalEntriesSync(): List<JournalEntry> = journalDao.getAllJournalEntriesSync()
 }

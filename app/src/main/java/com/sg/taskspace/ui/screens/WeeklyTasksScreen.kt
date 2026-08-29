@@ -144,6 +144,7 @@ fun WeeklyTasksScreen(
                     }
                 }
             } else {
+                val soundEffectsEnabled = userPreferences?.soundEffectsEnabled ?: true
                 items(dayTasks) { task ->
                     TaskCard(
                         task = task,
@@ -153,7 +154,8 @@ fun WeeklyTasksScreen(
                         onSnooze = { viewModel.snoozeTaskToTomorrow(task) },
                         projectName = task.projectId?.let { projectsMap[it]?.name },
                         swipeRightAction = swipeRightAction,
-                        swipeLeftAction = swipeLeftAction
+                        swipeLeftAction = swipeLeftAction,
+                        soundEffectsEnabled = soundEffectsEnabled
                     )
                 }
             }

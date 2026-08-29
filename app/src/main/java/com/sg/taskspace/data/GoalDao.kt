@@ -12,6 +12,9 @@ interface GoalDao {
     @Query("SELECT * FROM goals ORDER BY deadlineDate ASC")
     fun getAllGoals(): Flow<List<Goal>>
 
+    @Query("SELECT * FROM goals ORDER BY deadlineDate ASC")
+    suspend fun getAllGoalsSync(): List<Goal>
+
     @Query("SELECT * FROM goals WHERE isCompleted = 0 ORDER BY deadlineDate ASC")
     fun getActiveGoals(): Flow<List<Goal>>
 
@@ -20,4 +23,7 @@ interface GoalDao {
 
     @Delete
     suspend fun deleteGoal(goal: Goal)
+
+    @Query("DELETE FROM goals")
+    suspend fun deleteAllGoals()
 }

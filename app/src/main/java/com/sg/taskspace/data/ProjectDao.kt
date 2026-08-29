@@ -28,4 +28,7 @@ interface ProjectDao {
 
     @Query("SELECT * FROM projects ORDER BY createdAt DESC")
     suspend fun getAllProjectsSync(): List<Project>
+
+    @Query("DELETE FROM projects")
+    suspend fun deleteAllProjects()
 }

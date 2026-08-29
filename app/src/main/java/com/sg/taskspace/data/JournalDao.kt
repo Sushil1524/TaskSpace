@@ -12,6 +12,9 @@ interface JournalDao {
     @Query("SELECT * FROM journal_entries ORDER BY date DESC")
     fun getAllJournalEntries(): Flow<List<JournalEntry>>
 
+    @Query("SELECT * FROM journal_entries ORDER BY date DESC")
+    suspend fun getAllJournalEntriesSync(): List<JournalEntry>
+
     @Query("SELECT * FROM journal_entries WHERE date = :date LIMIT 1")
     fun getJournalEntryForDate(date: String): Flow<JournalEntry?>
 
@@ -20,4 +23,7 @@ interface JournalDao {
 
     @Delete
     suspend fun deleteJournalEntry(entry: JournalEntry)
+
+    @Query("DELETE FROM journal_entries")
+    suspend fun deleteAllJournalEntries()
 }

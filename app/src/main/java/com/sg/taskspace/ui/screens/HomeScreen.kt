@@ -335,6 +335,7 @@ fun HomeScreen(
             } else {
                 val swipeRightAction = userPreferences?.swipeRightAction ?: "Complete"
                 val swipeLeftAction = userPreferences?.swipeLeftAction ?: "Delete"
+                val soundEffectsEnabled = userPreferences?.soundEffectsEnabled ?: true
 
                 // Active tasks first
                 items(activeTasks) { task ->
@@ -346,7 +347,8 @@ fun HomeScreen(
                         onSnooze = { viewModel.snoozeTaskToTomorrow(task) },
                         projectName = task.projectId?.let { projectsMap[it]?.name },
                         swipeRightAction = swipeRightAction,
-                        swipeLeftAction = swipeLeftAction
+                        swipeLeftAction = swipeLeftAction,
+                        soundEffectsEnabled = soundEffectsEnabled
                     )
                 }
 
@@ -385,7 +387,8 @@ fun HomeScreen(
                                 onSnooze = { viewModel.snoozeTaskToTomorrow(task) },
                                 projectName = task.projectId?.let { projectsMap[it]?.name },
                                 swipeRightAction = swipeRightAction,
-                                swipeLeftAction = swipeLeftAction
+                                swipeLeftAction = swipeLeftAction,
+                                soundEffectsEnabled = soundEffectsEnabled
                             )
                         }
                     }
