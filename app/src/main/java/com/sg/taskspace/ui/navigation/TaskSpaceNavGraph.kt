@@ -37,6 +37,7 @@ import com.sg.taskspace.ui.screens.GoalScreen
 import com.sg.taskspace.ui.screens.JournalScreen
 import com.sg.taskspace.ui.screens.AddTaskScreen
 import com.sg.taskspace.ui.screens.ProjectsScreen
+import com.sg.taskspace.ui.screens.TrashScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -428,6 +429,53 @@ fun TaskSpaceNavGraph(
                 SettingsScreen(
                     viewModel = taskViewModel,
                     onNavigateBack = { 
+                        if (navController.previousBackStackEntry != null) {
+                            navController.popBackStack()
+                        }
+                    },
+                    onNavigateToTrash = {
+                        navController.navigate("trash")
+                    }
+                )
+            }
+
+            composable(
+                route = "trash",
+                enterTransition = {
+                    fadeIn(
+                        animationSpec = tween(300)
+                    ) + slideInHorizontally(
+                        initialOffsetX = { it },
+                        animationSpec = tween(300)
+                    )
+                },
+                exitTransition = {
+                    fadeOut(
+                        animationSpec = tween(300)
+                    ) + slideOutHorizontally(
+                        targetOffsetX = { it },
+                        animationSpec = tween(300)
+                    )
+                },
+                popEnterTransition = {
+                    fadeIn(
+                        animationSpec = tween(300)
+                    ) + slideInHorizontally(
+                        initialOffsetX = { -it },
+                        animationSpec = tween(300)
+                    )
+                },
+                popExitTransition = {
+                    fadeOut(
+                        animationSpec = tween(300)
+                    ) + slideOutHorizontally(
+                        targetOffsetX = { -it },
+                        animationSpec = tween(300)
+                    )
+                }
+            ) {
+                TrashScreen(
+                    onBack = {
                         if (navController.previousBackStackEntry != null) {
                             navController.popBackStack()
                         }

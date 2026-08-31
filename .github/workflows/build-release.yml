@@ -31,17 +31,31 @@ jobs:
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > release-key.jks
 
       - name: Build Release APK
+        env:
+          STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew assembleRelease -PBACKUP_SECRET_KEY="${{ secrets.BACKUP_SECRET_KEY }}"
       
-      - name: Sign APK
+      - name: Prepare & Sign APK
         run: |
-          $ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -n 1)/apksigner sign \
-            -ks release-key.jks \
-            -ks-key-alias ${{ secrets.KEY_ALIAS }} \
-            -ks-pass pass:${{ secrets.KEYSTORE_PASSWORD }} \
-            -key-pass pass:${{ secrets.KEY_PASSWORD }} \
-            --out app/build/outputs/apk/release/TaskSpace-release.apk \
-            app/build/outputs/apk/release/app-release-unsigned.apk
+          BUILD_DIR="app/build/outputs/apk/release"
+          if [ -f "$BUILD_DIR/app-release.apk" ]; then
+            echo "Gradle signed APK found."
+            cp "$BUILD_DIR/app-release.apk" "$BUILD_DIR/TaskSpace-release.apk"
+          elif [ -f "$BUILD_DIR/app-release-unsigned.apk" ]; then
+            echo "Unsigned APK found. Signing with apksigner..."
+            $ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -n 1)/apksigner sign \
+              -ks release-key.jks \
+              -ks-key-alias "${{ secrets.KEY_ALIAS }}" \
+              -ks-pass pass:"${{ secrets.KEYSTORE_PASSWORD }}" \
+              -key-pass pass:"${{ secrets.KEY_PASSWORD }}" \
+              --out "$BUILD_DIR/TaskSpace-release.apk" \
+              "$BUILD_DIR/app-release-unsigned.apk"
+          else
+            echo "No APK found in $BUILD_DIR"
+            exit 1
+          fi
 
       - name: Verify signature
         run: |

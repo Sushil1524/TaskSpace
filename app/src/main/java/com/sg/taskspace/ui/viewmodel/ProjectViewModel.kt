@@ -46,7 +46,13 @@ class ProjectViewModel(private val projectRepository: ProjectRepository) : ViewM
 
     fun deleteProject(project: Project) {
         viewModelScope.launch {
-            projectRepository.deleteProject(project)
+            projectRepository.softDeleteProject(project.id)
+        }
+    }
+
+    fun restoreProject(projectId: String) {
+        viewModelScope.launch {
+            projectRepository.restoreProject(projectId)
         }
     }
 

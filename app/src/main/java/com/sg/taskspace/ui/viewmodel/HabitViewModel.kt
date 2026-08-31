@@ -109,7 +109,13 @@ class HabitViewModel(private val habitRepository: HabitRepository) : ViewModel()
 
     fun deleteHabit(habit: Habit) {
         viewModelScope.launch {
-            habitRepository.deleteHabit(habit)
+            habitRepository.softDeleteHabit(habit.id)
+        }
+    }
+
+    fun restoreHabit(habitId: String) {
+        viewModelScope.launch {
+            habitRepository.restoreHabit(habitId)
         }
     }
 

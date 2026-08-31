@@ -545,7 +545,13 @@ class TaskViewModel(
     
     fun deleteTask(task: Task) {
         viewModelScope.launch {
-            taskRepository.deleteTask(task)
+            taskRepository.softDeleteTask(task.id)
+        }
+    }
+
+    fun restoreTask(taskId: String) {
+        viewModelScope.launch {
+            taskRepository.restoreTask(taskId)
         }
     }
 

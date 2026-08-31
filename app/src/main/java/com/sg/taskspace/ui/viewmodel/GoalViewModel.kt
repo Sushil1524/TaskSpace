@@ -38,7 +38,13 @@ class GoalViewModel(private val goalRepository: GoalRepository) : ViewModel() {
 
     fun deleteGoal(goal: Goal) {
         viewModelScope.launch {
-            goalRepository.deleteGoal(goal)
+            goalRepository.softDeleteGoal(goal.id)
+        }
+    }
+
+    fun restoreGoal(goalId: String) {
+        viewModelScope.launch {
+            goalRepository.restoreGoal(goalId)
         }
     }
 

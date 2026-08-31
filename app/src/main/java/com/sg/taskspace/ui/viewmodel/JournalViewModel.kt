@@ -47,7 +47,13 @@ class JournalViewModel(private val journalRepository: JournalRepository) : ViewM
     
     fun deleteEntry(entry: JournalEntry) {
         viewModelScope.launch {
-            journalRepository.deleteJournalEntry(entry)
+            journalRepository.softDeleteJournalEntry(entry.id)
+        }
+    }
+
+    fun restoreEntry(entryId: String) {
+        viewModelScope.launch {
+            journalRepository.restoreJournalEntry(entryId)
         }
     }
 

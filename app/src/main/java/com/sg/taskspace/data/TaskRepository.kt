@@ -30,4 +30,15 @@ class TaskRepository(private val taskDao: TaskDao) {
     fun getRepeatingTasks(): Flow<List<Task>> = taskDao.getRepeatingTasks()
 
     suspend fun deleteAllTasks() = taskDao.deleteAllTasks()
+
+    // ── Soft Delete & Trash ──────────────────────────────────────────────────
+    fun getDeletedTasks(): Flow<List<Task>> = taskDao.getDeletedTasks()
+
+    suspend fun softDeleteTask(taskId: String) = taskDao.softDeleteTask(taskId)
+
+    suspend fun restoreTask(taskId: String) = taskDao.restoreTask(taskId)
+
+    suspend fun purgeExpiredTasks(thresholdMillis: Long) = taskDao.purgeExpiredTasks(thresholdMillis)
+
+    suspend fun emptyTrashTasks() = taskDao.emptyTrashTasks()
 }

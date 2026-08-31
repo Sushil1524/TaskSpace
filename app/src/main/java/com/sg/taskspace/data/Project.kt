@@ -13,5 +13,7 @@ data class Project(
     @SerializedName("colorHex") val colorHex: String = "#6366F1", // Default: Indigo
     @SerializedName("createdAt") val createdAt: Long = System.currentTimeMillis(),
     @SerializedName("dueDate") val dueDate: String? = null,
-    @SerializedName("reminderTimeMillis") val reminderTimeMillis: Long? = null
+    @SerializedName("reminderTimeMillis") val reminderTimeMillis: Long? = null,
+    @SerializedName("isDeleted") val isDeleted: Boolean = false,
+    @SerializedName("deletedAt") val deletedAt: Long? = null
 )

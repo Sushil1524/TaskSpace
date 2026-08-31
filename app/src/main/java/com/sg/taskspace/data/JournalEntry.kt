@@ -11,5 +11,7 @@ data class JournalEntry(
     @SerializedName("date") val date: String, // YYYY-MM-DD
     @SerializedName("content") val content: String,
     @SerializedName("mood") val mood: String = "Neutral", // e.g., "Happy", "Neutral", "Sad"
-    @SerializedName("createdAt") val createdAt: Long = System.currentTimeMillis()
+    @SerializedName("createdAt") val createdAt: Long = System.currentTimeMillis(),
+    @SerializedName("isDeleted") val isDeleted: Boolean = false,
+    @SerializedName("deletedAt") val deletedAt: Long? = null
 )

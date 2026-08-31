@@ -29,5 +29,9 @@ data class Task(
 
     // Timestamps
     @SerializedName("createdAt") val createdAt: Long = System.currentTimeMillis(),
-    @SerializedName("completedAt") val completedAt: Long? = null
+    @SerializedName("completedAt") val completedAt: Long? = null,
+
+    // Soft-delete / Trash
+    @SerializedName("isDeleted") val isDeleted: Boolean = false,
+    @SerializedName("deletedAt") val deletedAt: Long? = null
 )

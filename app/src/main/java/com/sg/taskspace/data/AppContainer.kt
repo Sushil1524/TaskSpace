@@ -7,18 +7,21 @@ interface AppContainer {
     val userPreferencesRepository: UserPreferencesRepository
     val dataTransferManager: DataTransferManager
     val projectRepository: ProjectRepository
+    val journalRepository: JournalRepository
+    val habitRepository: HabitRepository
+    val goalRepository: GoalRepository
 }
 
 class AppDataContainer(private val context: Context) : AppContainer {
-    private val journalRepository: JournalRepository by lazy {
+    override val journalRepository: JournalRepository by lazy {
         JournalRepository(AppDatabase.getDatabase(context).journalDao())
     }
 
-    private val habitRepository: HabitRepository by lazy {
+    override val habitRepository: HabitRepository by lazy {
         HabitRepository(AppDatabase.getDatabase(context).habitDao())
     }
 
-    private val goalRepository: GoalRepository by lazy {
+    override val goalRepository: GoalRepository by lazy {
         GoalRepository(AppDatabase.getDatabase(context).goalDao())
     }
 

@@ -14,6 +14,10 @@ class HabitRepository(private val habitDao: HabitDao) {
         habitDao.deleteHabit(habit)
     }
 
+    suspend fun deleteHabitById(habitId: String) {
+        habitDao.deleteHabitById(habitId)
+    }
+
     fun getHabitLog(habitId: String, date: String): Flow<HabitLog?> {
         return habitDao.getHabitLog(habitId, date)
     }
@@ -35,4 +39,15 @@ class HabitRepository(private val habitDao: HabitDao) {
 
     suspend fun getAllHabitsSync(): List<Habit> = habitDao.getAllHabitsSync()
     suspend fun getAllHabitLogsSync(): List<HabitLog> = habitDao.getAllHabitLogsSync()
+
+    // ── Soft Delete & Trash ──────────────────────────────────────────────────
+    fun getDeletedHabits(): Flow<List<Habit>> = habitDao.getDeletedHabits()
+
+    suspend fun softDeleteHabit(habitId: String) = habitDao.softDeleteHabit(habitId)
+
+    suspend fun restoreHabit(habitId: String) = habitDao.restoreHabit(habitId)
+
+    suspend fun purgeExpiredHabits(thresholdMillis: Long) = habitDao.purgeExpiredHabits(thresholdMillis)
+
+    suspend fun emptyTrashHabits() = habitDao.emptyTrashHabits()
 }

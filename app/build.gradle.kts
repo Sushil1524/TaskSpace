@@ -34,10 +34,14 @@ android {
 
     signingConfigs {
         create("release") {
-            val keyFile = rootProject.file("keys/android-sign-keys-new.jks").takeIf { it.exists() }
-                ?: rootProject.file(keystoreProperties.getProperty("storeFile") ?: "keys/release.jks")
+            val keyFile = sequenceOf(
+                rootProject.file("release-key.jks"),
+                rootProject.file("keys/android-sign-keys-new.jks"),
+                keystoreProperties.getProperty("storeFile")?.let { rootProject.file(it) },
+                rootProject.file("keys/release.jks")
+            ).filterNotNull().firstOrNull { it.exists() && it.length() > 0L }
 
-            if (keyFile.exists()) {
+            if (keyFile != null) {
                 storeFile = keyFile
                 storePassword = System.getenv("STORE_PASSWORD")
                     ?: keystoreProperties.getProperty("storePassword")
@@ -59,7 +63,10 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("release")
+            val releaseSigning = signingConfigs.getByName("release")
+            if (releaseSigning.storeFile != null) {
+                signingConfig = releaseSigning
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

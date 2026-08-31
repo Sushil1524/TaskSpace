@@ -10,7 +10,9 @@ data class Habit(
     @PrimaryKey @SerializedName("id") val id: String = UUID.randomUUID().toString(),
     @SerializedName("name") val name: String,
     @SerializedName("frequency") val frequency: String = "Daily", // e.g., "Daily", "Weekly"
-    @SerializedName("createdAt") val createdAt: Long = System.currentTimeMillis()
+    @SerializedName("createdAt") val createdAt: Long = System.currentTimeMillis(),
+    @SerializedName("isDeleted") val isDeleted: Boolean = false,
+    @SerializedName("deletedAt") val deletedAt: Long? = null
 )
 
 @Entity(tableName = "habit_logs")

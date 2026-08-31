@@ -12,5 +12,7 @@ data class Goal(
     @SerializedName("notes") val notes: String? = null,
     @SerializedName("deadlineDate") val deadlineDate: String, // e.g., YYYY-MM-DD
     @SerializedName("isCompleted") val isCompleted: Boolean = false,
-    @SerializedName("createdAt") val createdAt: Long = System.currentTimeMillis()
+    @SerializedName("createdAt") val createdAt: Long = System.currentTimeMillis(),
+    @SerializedName("isDeleted") val isDeleted: Boolean = false,
+    @SerializedName("deletedAt") val deletedAt: Long? = null
 )

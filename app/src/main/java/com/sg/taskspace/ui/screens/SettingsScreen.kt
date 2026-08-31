@@ -37,7 +37,8 @@ import com.sg.taskspace.data.BackupDiffResult
 @Composable
 fun SettingsScreen(
     viewModel: TaskViewModel,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToTrash: () -> Unit = {}
 ) {
     val userPreferences by viewModel.userPreferences.collectAsState()
     val context = LocalContext.current
@@ -743,6 +744,13 @@ fun SettingsScreen(
                         Toast.makeText(context, "Restore launcher error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
                     }
                 }
+            )
+            SettingsItem(
+                icon = Icons.Default.Delete,
+                title = "Trash",
+                subtitle = "View and restore soft-deleted items (30-day retention)",
+                onClick = { onNavigateToTrash() },
+                trailingIcon = Icons.Default.ChevronRight
             )
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
