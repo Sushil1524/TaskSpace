@@ -80,7 +80,8 @@ fun HabitHeatmap(
 
             val isMonochrome = MaterialTheme.colorScheme.primary == Color.White || MaterialTheme.colorScheme.primary == Color.Black
             val activeColor = if (isMonochrome) Color(0xFFE4E4E7) else SecondaryEmerald
-            val emptyColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+            val emptyColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+            val futureColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f)
 
             // 12-week scrollable grid
             LazyRow(
@@ -91,45 +92,129 @@ fun HabitHeatmap(
                     val weekDays = grid[weekIdx]
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         weekDays.forEach { (date, count) ->
-                            val intensity = if (count == 0) 0f else (count.toFloat() / maxCount).coerceIn(0.3f, 1f)
-                            val cellColor = when {
-                                date > today -> emptyColor.copy(alpha = 0.04f)
-                                count == 0 -> emptyColor
-                                else -> activeColor.copy(alpha = intensity)
+                            val isFuture = date > today
+                            val level = remember(count, maxCount) {
+                                getHeatmapLevel(count, maxCount)
                             }
 
-                            Box(
-                                modifier = Modifier
-                                    .size(16.dp)
-                                    .clip(RoundedCornerShape(3.dp))
-                                    .background(cellColor)
+                            HeatmapCell(
+                                level = level,
+                                isFuture = isFuture,
+                                isMonochrome = isMonochrome,
+                                activeColor = activeColor,
+                                emptyColor = emptyColor,
+                                futureColor = futureColor
                             )
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Legend
+            // 5-Shade GitHub-Style Legend
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Less ", style = MaterialTheme.typography.labelSmall, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                listOf(0f, 0.3f, 0.6f, 1.0f).forEach { alpha ->
-                    val color = if (alpha == 0f) emptyColor else activeColor.copy(alpha = alpha)
+                Text(
+                    text = "Less ",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                // 5 shades: Level 0 (no activity), 1 (low), 2 (moderate), 3 (high), 4 (max)
+                (0..4).forEach { lvl ->
                     Box(
                         modifier = Modifier
                             .padding(horizontal = 2.dp)
-                            .size(10.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(color)
-                    )
+                            .size(11.dp)
+                            .clip(RoundedCornerShape(2.5.dp))
+                    ) {
+                        HeatmapCell(
+                            level = lvl,
+                            isFuture = false,
+                            isMonochrome = isMonochrome,
+                            activeColor = activeColor,
+                            emptyColor = emptyColor,
+                            futureColor = futureColor,
+                            cellSize = 11.dp
+                        )
+                    }
                 }
-                Text(" More", style = MaterialTheme.typography.labelSmall, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                Text(
+                    text = " More",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
+        }
+    }
+}
+
+private fun getHeatmapLevel(count: Int, maxCount: Int): Int {
+    if (count <= 0) return 0
+    if (maxCount <= 4) {
+        return count.coerceAtMost(4)
+    }
+    val ratio = count.toFloat() / maxCount
+    return when {
+        ratio <= 0.25f -> 1
+        ratio <= 0.50f -> 2
+        ratio <= 0.75f -> 3
+        else -> 4
+    }
+}
+
+@Composable
+private fun HeatmapCell(
+    level: Int,
+    isFuture: Boolean,
+    isMonochrome: Boolean,
+    activeColor: Color,
+    emptyColor: Color,
+    futureColor: Color,
+    cellSize: androidx.compose.ui.unit.Dp = 16.dp
+) {
+    val baseColor = when {
+        isFuture -> futureColor
+        else -> emptyColor
+    }
+
+    val overlayColor = when {
+        isFuture || level == 0 -> Color.Transparent
+        isMonochrome -> when (level) {
+            1 -> Color(0xFF52525B) // Zinc-600
+            2 -> Color(0xFFA1A1AA) // Zinc-400
+            3 -> Color(0xFFE4E4E7) // Zinc-200
+            4 -> Color(0xFFFFFFFF) // White
+            else -> Color(0xFFFFFFFF)
+        }
+        else -> when (level) {
+            1 -> activeColor.copy(alpha = 0.35f) // Level 1 (Low activity)
+            2 -> activeColor.copy(alpha = 0.60f) // Level 2 (Moderate activity)
+            3 -> activeColor.copy(alpha = 0.82f) // Level 3 (High activity)
+            4 -> activeColor.copy(alpha = 1.00f) // Level 4 (Max activity)
+            else -> activeColor
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .size(cellSize)
+            .clip(RoundedCornerShape(3.dp))
+            .background(baseColor)
+    ) {
+        if (overlayColor != Color.Transparent) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(overlayColor)
+            )
         }
     }
 }

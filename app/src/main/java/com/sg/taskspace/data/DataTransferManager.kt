@@ -23,11 +23,45 @@ data class BackupData(
     @SerializedName("userPreferences") val userPreferences: UserPreferences? = null
 )
 
+enum class RestoreStrategy(val label: String, val description: String) {
+    MERGE_BACKUP_WINS("Merge (Backup Overwrites Conflicts)", "Keep current local data + add backup items. If IDs match, use backup version."),
+    MERGE_LOCAL_WINS("Merge (Keep Local Conflicts)", "Keep current local data + add new backup items. If IDs match, keep local version."),
+    REPLACE_LOCAL("Replace Category", "Wipe current local data for this category and overwrite with backup items."),
+    KEEP_LOCAL("Keep Local (Skip)", "Do not change current local data for this category; ignore backup items.")
+}
+
+enum class ItemDiffType {
+    ADDED,
+    MODIFIED,
+    DELETED_IN_BACKUP
+}
+
+data class ItemDiffDetails(
+    val id: String,
+    val title: String,
+    val diffType: ItemDiffType
+)
+
+data class CategoryRestoreConfig(
+    val strategy: RestoreStrategy = RestoreStrategy.MERGE_BACKUP_WINS,
+    val excludedItemIds: Set<String> = emptySet()
+)
+
+data class RestoreSelectionConfig(
+    val taskConfig: CategoryRestoreConfig = CategoryRestoreConfig(),
+    val habitConfig: CategoryRestoreConfig = CategoryRestoreConfig(),
+    val journalConfig: CategoryRestoreConfig = CategoryRestoreConfig(),
+    val goalConfig: CategoryRestoreConfig = CategoryRestoreConfig(),
+    val projectConfig: CategoryRestoreConfig = CategoryRestoreConfig(),
+    val restorePreferences: Boolean = true
+)
+
 /** Per-entity diff counts computed by [DataTransferManager.previewImport]. */
 data class EntityDiff(
     val added: Int = 0,
     val modified: Int = 0,
-    val deleted: Int = 0
+    val deleted: Int = 0,
+    val items: List<ItemDiffDetails> = emptyList()
 ) {
     val hasChanges: Boolean get() = added > 0 || modified > 0 || deleted > 0
     val totalImpact: Int get() = added + modified + deleted
@@ -269,61 +303,12 @@ class DataTransferManager(
                 val currentGoals = goalRepository.getAllGoalsSync().associateBy { it.id }
                 val currentProjects = projectRepository.getAllProjectsSync().associateBy { it.id }
 
-                // ── Compute task diff ──
-                val backupTasks = backupData.tasks.orEmpty()
-                val backupTaskMap = backupTasks.associateBy { it.id }
-                val taskDiff = EntityDiff(
-                    added = backupTasks.count { it.id !in currentTasks },
-                    modified = backupTasks.count { t ->
-                        val cur = currentTasks[t.id]
-                        cur != null && cur != t
-                    },
-                    deleted = currentTasks.count { it.key !in backupTaskMap }
-                )
-
-                // ── Compute habits diff ──
-                val backupHabits = backupData.habits.orEmpty()
-                val backupHabitMap = backupHabits.associateBy { it.id }
-                val habitDiff = EntityDiff(
-                    added = backupHabits.count { it.id !in currentHabits },
-                    modified = backupHabits.count { h ->
-                        val cur = currentHabits[h.id]; cur != null && cur != h
-                    },
-                    deleted = currentHabits.count { it.key !in backupHabitMap }
-                )
-
-                // ── Compute journal diff (by date since journal is date-keyed) ──
-                val backupJournal = backupData.journalEntries.orEmpty()
-                val backupJournalMap = backupJournal.associateBy { it.id }
-                val journalDiff = EntityDiff(
-                    added = backupJournal.count { it.id !in currentJournal },
-                    modified = backupJournal.count { j ->
-                        val cur = currentJournal[j.id]; cur != null && cur != j
-                    },
-                    deleted = currentJournal.count { it.key !in backupJournalMap }
-                )
-
-                // ── Compute goals diff ──
-                val backupGoals = backupData.goals.orEmpty()
-                val backupGoalMap = backupGoals.associateBy { it.id }
-                val goalDiff = EntityDiff(
-                    added = backupGoals.count { it.id !in currentGoals },
-                    modified = backupGoals.count { g ->
-                        val cur = currentGoals[g.id]; cur != null && cur != g
-                    },
-                    deleted = currentGoals.count { it.key !in backupGoalMap }
-                )
-
-                // ── Compute projects diff ──
-                val backupProjects = backupData.projects.orEmpty()
-                val backupProjectMap = backupProjects.associateBy { it.id }
-                val projectDiff = EntityDiff(
-                    added = backupProjects.count { it.id !in currentProjects },
-                    modified = backupProjects.count { p ->
-                        val cur = currentProjects[p.id]; cur != null && cur != p
-                    },
-                    deleted = currentProjects.count { it.key !in backupProjectMap }
-                )
+                // ── Compute diffs with itemized details ──
+                val taskDiff = computeCategoryDiff(currentTasks, backupData.tasks.orEmpty(), { it.id }, { it.title })
+                val habitDiff = computeCategoryDiff(currentHabits, backupData.habits.orEmpty(), { it.id }, { it.name })
+                val journalDiff = computeCategoryDiff(currentJournal, backupData.journalEntries.orEmpty(), { it.id }, { "Journal Entry (${it.date})" })
+                val goalDiff = computeCategoryDiff(currentGoals, backupData.goals.orEmpty(), { it.id }, { it.title })
+                val projectDiff = computeCategoryDiff(currentProjects, backupData.projects.orEmpty(), { it.id }, { it.name })
 
                 val diffResult = BackupDiffResult(
                     tasks = taskDiff,
@@ -342,49 +327,206 @@ class DataTransferManager(
         }
     }
 
-    /**
-     * Phase 2 of restore: takes the already-parsed [BackupData] (from [previewImport])
-     * and commits all changes to the database. Clears existing data first.
-     */
+    private fun <T> computeCategoryDiff(
+        currentMap: Map<String, T>,
+        backupList: List<T>,
+        getId: (T) -> String,
+        getTitle: (T) -> String
+    ): EntityDiff {
+        val backupMap = backupList.associateBy(getId)
+        val itemDetails = mutableListOf<ItemDiffDetails>()
+        var added = 0
+        var modified = 0
+        var deleted = 0
+
+        for (b in backupList) {
+            val id = getId(b)
+            val cur = currentMap[id]
+            if (cur == null) {
+                added++
+                itemDetails.add(ItemDiffDetails(id = id, title = getTitle(b), diffType = ItemDiffType.ADDED))
+            } else if (cur != b) {
+                modified++
+                itemDetails.add(ItemDiffDetails(id = id, title = getTitle(b), diffType = ItemDiffType.MODIFIED))
+            }
+        }
+
+        for ((id, cur) in currentMap) {
+            if (id !in backupMap) {
+                deleted++
+                itemDetails.add(ItemDiffDetails(id = id, title = getTitle(cur), diffType = ItemDiffType.DELETED_IN_BACKUP))
+            }
+        }
+
+        return EntityDiff(
+            added = added,
+            modified = modified,
+            deleted = deleted,
+            items = itemDetails
+        )
+    }
+
+    /** Legacy full replace import. */
     suspend fun importDataFromParsed(backupData: BackupData): Result<Boolean> {
+        val replaceAllConfig = RestoreSelectionConfig(
+            taskConfig = CategoryRestoreConfig(RestoreStrategy.REPLACE_LOCAL),
+            habitConfig = CategoryRestoreConfig(RestoreStrategy.REPLACE_LOCAL),
+            journalConfig = CategoryRestoreConfig(RestoreStrategy.REPLACE_LOCAL),
+            goalConfig = CategoryRestoreConfig(RestoreStrategy.REPLACE_LOCAL),
+            projectConfig = CategoryRestoreConfig(RestoreStrategy.REPLACE_LOCAL),
+            restorePreferences = true
+        )
+        return importDataWithSelection(backupData, replaceAllConfig)
+    }
+
+    /** Granular restore with per-category strategy & itemized selection. */
+    suspend fun importDataWithSelection(
+        backupData: BackupData,
+        selectionConfig: RestoreSelectionConfig
+    ): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             try {
-                // ── Clear all existing data first to prevent duplicates ──
-                taskRepository.deleteAllTasks()
-                journalRepository.deleteAllJournalEntries()
-                habitRepository.deleteAllHabitLogs()
-                habitRepository.deleteAllHabits()
-                goalRepository.deleteAllGoals()
-                projectRepository.deleteAllProjects()
+                // 1. Tasks
+                val taskConfig = selectionConfig.taskConfig
+                when (taskConfig.strategy) {
+                    RestoreStrategy.REPLACE_LOCAL -> {
+                        taskRepository.deleteAllTasks()
+                        backupData.tasks.orEmpty()
+                            .filter { it.id !in taskConfig.excludedItemIds }
+                            .forEach { task -> taskRepository.insertTask(task) }
+                    }
+                    RestoreStrategy.MERGE_BACKUP_WINS -> {
+                        backupData.tasks.orEmpty()
+                            .filter { it.id !in taskConfig.excludedItemIds }
+                            .forEach { task -> taskRepository.insertTask(task) }
+                    }
+                    RestoreStrategy.MERGE_LOCAL_WINS -> {
+                        val currentTaskIds = taskRepository.getAllTasksSync().map { it.id }.toSet()
+                        backupData.tasks.orEmpty()
+                            .filter { it.id !in taskConfig.excludedItemIds && it.id !in currentTaskIds }
+                            .forEach { task -> taskRepository.insertTask(task) }
+                    }
+                    RestoreStrategy.KEEP_LOCAL -> { /* Skip */ }
+                }
 
-                // ── Restore all data from backup ──
-                backupData.tasks.orEmpty().forEach { task -> taskRepository.insertTask(task) }
-                backupData.journalEntries.orEmpty().forEach { entry -> journalRepository.insertJournalEntry(entry) }
-                backupData.habits.orEmpty().forEach { habit -> habitRepository.insertHabit(habit) }
-                backupData.habitLogs.orEmpty().forEach { log -> habitRepository.insertHabitLog(log) }
-                backupData.goals.orEmpty().forEach { goal -> goalRepository.insertGoal(goal) }
-                backupData.projects.orEmpty().forEach { project -> projectRepository.insertProject(project) }
+                // 2. Habits
+                val habitConfig = selectionConfig.habitConfig
+                when (habitConfig.strategy) {
+                    RestoreStrategy.REPLACE_LOCAL -> {
+                        habitRepository.deleteAllHabitLogs()
+                        habitRepository.deleteAllHabits()
+                        backupData.habits.orEmpty()
+                            .filter { it.id !in habitConfig.excludedItemIds }
+                            .forEach { habit -> habitRepository.insertHabit(habit) }
+                        backupData.habitLogs.orEmpty().forEach { log -> habitRepository.insertHabitLog(log) }
+                    }
+                    RestoreStrategy.MERGE_BACKUP_WINS -> {
+                        backupData.habits.orEmpty()
+                            .filter { it.id !in habitConfig.excludedItemIds }
+                            .forEach { habit -> habitRepository.insertHabit(habit) }
+                        backupData.habitLogs.orEmpty().forEach { log -> habitRepository.insertHabitLog(log) }
+                    }
+                    RestoreStrategy.MERGE_LOCAL_WINS -> {
+                        val currentHabitIds = habitRepository.getAllHabitsSync().map { it.id }.toSet()
+                        backupData.habits.orEmpty()
+                            .filter { it.id !in habitConfig.excludedItemIds && it.id !in currentHabitIds }
+                            .forEach { habit -> habitRepository.insertHabit(habit) }
+                        backupData.habitLogs.orEmpty().forEach { log -> habitRepository.insertHabitLog(log) }
+                    }
+                    RestoreStrategy.KEEP_LOCAL -> { /* Skip */ }
+                }
 
-                // ── Restore preferences (all fields including swipe gestures) if present ──
-                backupData.userPreferences?.let { prefs ->
-                    userPreferencesRepository.restorePreferences(
-                        userName = prefs.userName,
-                        isOnboardingCompleted = prefs.isOnboardingCompleted,
-                        themeMode = prefs.themeMode,
-                        fontFamily = prefs.fontFamily,
-                        colorPalette = prefs.colorPalette,
-                        isSecureBackupEnabled = prefs.isSecureBackupEnabled,
-                        autoBackupFrequency = prefs.autoBackupFrequency,
-                        notificationsEnabled = prefs.notificationsEnabled,
-                        soundEffectsEnabled = prefs.soundEffectsEnabled,
-                        swipeRightAction = prefs.swipeRightAction,
-                        swipeLeftAction = prefs.swipeLeftAction,
-                        isAppLockEnabled = prefs.isAppLockEnabled,
-                        appLockPinHash = prefs.appLockPinHash,
-                        isBiometricEnabled = prefs.isBiometricEnabled,
-                        autoLockTimeout = prefs.autoLockTimeout,
-                        totalXp = prefs.totalXp
-                    )
+                // 3. Journal Entries
+                val journalConfig = selectionConfig.journalConfig
+                when (journalConfig.strategy) {
+                    RestoreStrategy.REPLACE_LOCAL -> {
+                        journalRepository.deleteAllJournalEntries()
+                        backupData.journalEntries.orEmpty()
+                            .filter { it.id !in journalConfig.excludedItemIds }
+                            .forEach { entry -> journalRepository.insertJournalEntry(entry) }
+                    }
+                    RestoreStrategy.MERGE_BACKUP_WINS -> {
+                        backupData.journalEntries.orEmpty()
+                            .filter { it.id !in journalConfig.excludedItemIds }
+                            .forEach { entry -> journalRepository.insertJournalEntry(entry) }
+                    }
+                    RestoreStrategy.MERGE_LOCAL_WINS -> {
+                        val currentJournalIds = journalRepository.getAllJournalEntriesSync().map { it.id }.toSet()
+                        backupData.journalEntries.orEmpty()
+                            .filter { it.id !in journalConfig.excludedItemIds && it.id !in currentJournalIds }
+                            .forEach { entry -> journalRepository.insertJournalEntry(entry) }
+                    }
+                    RestoreStrategy.KEEP_LOCAL -> { /* Skip */ }
+                }
+
+                // 4. Goals
+                val goalConfig = selectionConfig.goalConfig
+                when (goalConfig.strategy) {
+                    RestoreStrategy.REPLACE_LOCAL -> {
+                        goalRepository.deleteAllGoals()
+                        backupData.goals.orEmpty()
+                            .filter { it.id !in goalConfig.excludedItemIds }
+                            .forEach { goal -> goalRepository.insertGoal(goal) }
+                    }
+                    RestoreStrategy.MERGE_BACKUP_WINS -> {
+                        backupData.goals.orEmpty()
+                            .filter { it.id !in goalConfig.excludedItemIds }
+                            .forEach { goal -> goalRepository.insertGoal(goal) }
+                    }
+                    RestoreStrategy.MERGE_LOCAL_WINS -> {
+                        val currentGoalIds = goalRepository.getAllGoalsSync().map { it.id }.toSet()
+                        backupData.goals.orEmpty()
+                            .filter { it.id !in goalConfig.excludedItemIds && it.id !in currentGoalIds }
+                            .forEach { goal -> goalRepository.insertGoal(goal) }
+                    }
+                    RestoreStrategy.KEEP_LOCAL -> { /* Skip */ }
+                }
+
+                // 5. Projects
+                val projectConfig = selectionConfig.projectConfig
+                when (projectConfig.strategy) {
+                    RestoreStrategy.REPLACE_LOCAL -> {
+                        projectRepository.deleteAllProjects()
+                        backupData.projects.orEmpty()
+                            .filter { it.id !in projectConfig.excludedItemIds }
+                            .forEach { project -> projectRepository.insertProject(project) }
+                    }
+                    RestoreStrategy.MERGE_BACKUP_WINS -> {
+                        backupData.projects.orEmpty()
+                            .filter { it.id !in projectConfig.excludedItemIds }
+                            .forEach { project -> projectRepository.insertProject(project) }
+                    }
+                    RestoreStrategy.MERGE_LOCAL_WINS -> {
+                        val currentProjectIds = projectRepository.getAllProjectsSync().map { it.id }.toSet()
+                        backupData.projects.orEmpty()
+                            .filter { it.id !in projectConfig.excludedItemIds && it.id !in currentProjectIds }
+                            .forEach { project -> projectRepository.insertProject(project) }
+                    }
+                    RestoreStrategy.KEEP_LOCAL -> { /* Skip */ }
+                }
+
+                // Preferences
+                if (selectionConfig.restorePreferences) {
+                    backupData.userPreferences?.let { prefs ->
+                        userPreferencesRepository.restorePreferences(
+                            userName = prefs.userName,
+                            isOnboardingCompleted = prefs.isOnboardingCompleted,
+                            themeMode = prefs.themeMode,
+                            fontFamily = prefs.fontFamily,
+                            colorPalette = prefs.colorPalette,
+                            isSecureBackupEnabled = prefs.isSecureBackupEnabled,
+                            autoBackupFrequency = prefs.autoBackupFrequency,
+                            notificationsEnabled = prefs.notificationsEnabled,
+                            soundEffectsEnabled = prefs.soundEffectsEnabled,
+                            swipeRightAction = prefs.swipeRightAction,
+                            swipeLeftAction = prefs.swipeLeftAction,
+                            isAppLockEnabled = prefs.isAppLockEnabled,
+                            appLockPinHash = prefs.appLockPinHash,
+                            isBiometricEnabled = prefs.isBiometricEnabled,
+                            autoLockTimeout = prefs.autoLockTimeout,
+                            totalXp = prefs.totalXp
+                        )
+                    }
                 }
 
                 Result.success(true)

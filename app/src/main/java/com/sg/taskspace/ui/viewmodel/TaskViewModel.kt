@@ -81,6 +81,20 @@ class TaskViewModel(
         }
     }
 
+    /** Granular Phase 2: Commit backup with per-category & itemized selection. */
+    fun importDataWithSelection(
+        backupData: com.sg.taskspace.data.BackupData,
+        selectionConfig: com.sg.taskspace.data.RestoreSelectionConfig,
+        onResult: (Boolean) -> Unit
+    ) {
+        viewModelScope.launch {
+            val result = dataTransferManager.importDataWithSelection(backupData, selectionConfig)
+            withContext(Dispatchers.Main) {
+                onResult(result.isSuccess)
+            }
+        }
+    }
+
     val userPreferences: StateFlow<com.sg.taskspace.data.UserPreferences?> = userPreferencesRepository.userPreferencesFlow
         .stateIn(
             scope = viewModelScope,

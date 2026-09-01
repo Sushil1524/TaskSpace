@@ -126,15 +126,15 @@ fun SettingsScreen(
                 backupDiffResult = null
                 pendingRestoreUri = null
             },
-            onConfirm = {
+            onConfirmWithSelection = { selectionConfig ->
                 isRestoring = true
-                viewModel.importDataFromParsed(diff.parsedBackup) { success ->
+                viewModel.importDataWithSelection(diff.parsedBackup, selectionConfig) { success ->
                     isRestoring = false
                     backupDiffResult = null
                     pendingRestoreUri = null
                     Toast.makeText(
                         context,
-                        if (success) "✅ Data restored successfully!" else "❌ Restore failed.",
+                        if (success) "✅ Selected data restored successfully!" else "❌ Restore failed.",
                         Toast.LENGTH_SHORT
                     ).show()
                 }
