@@ -22,12 +22,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sg.taskspace.data.Habit
+import com.sg.taskspace.data.HabitLog
 import com.sg.taskspace.ui.theme.PriorityHigh
 import com.sg.taskspace.ui.theme.PriorityLow
 import com.sg.taskspace.ui.theme.PriorityMedium
 import com.sg.taskspace.ui.theme.PrimaryIndigo
 import com.sg.taskspace.ui.theme.SecondaryEmerald
+import com.sg.taskspace.ui.viewmodel.HabitViewModel
 import com.sg.taskspace.ui.viewmodel.TaskViewModel
+import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 
@@ -35,11 +39,21 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun InsightsScreen(
     viewModel: TaskViewModel,
+    habitViewModel: HabitViewModel? = null,
     onNavigateBack: () -> Unit
 ) {
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
     val insightsData by viewModel.getInsightsData(currentMonth).collectAsState(initial = null)
     val isCurrentMonth = currentMonth == YearMonth.now()
+
+    val habitsState = habitViewModel?.habits?.collectAsState()
+    val habits: List<Habit> = habitsState?.value ?: emptyList()
+
+    val allLogsState = habitViewModel?.allLogs?.collectAsState()
+    val allHabitLogs: List<HabitLog> = allLogsState?.value ?: emptyList()
+
+    val habitStatsState = habitViewModel?.habitStats?.collectAsState()
+    val habitStats: Map<String, HabitViewModel.HabitStats> = habitStatsState?.value ?: emptyMap()
 
     // Category colors
     val categoryColors = listOf(
@@ -182,7 +196,7 @@ fun InsightsScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                     InsightHighlightCard(
                         modifier = Modifier.weight(1f),
-                        label = "🔥 Streak",
+                        label = "🔥 Task Streak",
                         value = "${data.currentStreak}d",
                         subtitle = "current",
                         iconColor = Color(0xFFEF4444),
@@ -190,7 +204,7 @@ fun InsightsScreen(
                     )
                     InsightHighlightCard(
                         modifier = Modifier.weight(1f),
-                        label = "⭐ Best Day",
+                        label = "⭐ Best Task Day",
                         value = data.bestDayOfWeek.take(3),
                         subtitle = "this month",
                         iconColor = Color(0xFFF59E0B),
@@ -204,6 +218,108 @@ fun InsightsScreen(
                         iconColor = PriorityHigh,
                         bgColor = PriorityHigh.copy(alpha = 0.1f)
                     )
+                }
+
+                // ── Habit Analytics Section ──
+                if (habits.isNotEmpty()) {
+                    InsightSectionHeader("Habit Consistency Analytics", Icons.Default.SelfImprovement)
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                            // Habits Breakdown By Type
+                            val buildCount = habits.count { h -> h.type == "BUILD" }
+                            val quitCount = habits.count { h -> h.type == "QUIT" }
+                            val numericCount = habits.count { h -> h.type == "NUMERIC" }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                TypeBadge(label = "🟢 Build", count = buildCount, color = SecondaryEmerald)
+                                TypeBadge(label = "🛑 Quit", count = quitCount, color = PriorityHigh)
+                                TypeBadge(label = "📊 Target", count = numericCount, color = PrimaryIndigo)
+                            }
+
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                            // Day of Week Distribution for Habits
+                            Text(
+                                text = "Habit Completion Frequency by Day",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            val dayCounts = remember(allHabitLogs) {
+                                val map = mutableMapOf<String, Int>()
+                                listOf("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN").forEach { map[it] = 0 }
+                                allHabitLogs.filter { log -> log.isCompleted }.forEach { log ->
+                                    try {
+                                        val dayName = LocalDate.parse(log.date, DateTimeFormatter.ISO_DATE).dayOfWeek.name.take(3)
+                                        map[dayName] = (map[dayName] ?: 0) + 1
+                                    } catch (e: Exception) { }
+                                }
+                                map
+                            }
+
+                            val maxDayCount = maxOf(dayCounts.values.maxOrNull() ?: 1, 1)
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(80.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.Bottom
+                            ) {
+                                dayCounts.forEach { (day, count) ->
+                                    val barRatio = count.toFloat() / maxDayCount
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("$count", style = MaterialTheme.typography.labelSmall, fontSize = 9.sp)
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .width(14.dp)
+                                                .fillMaxHeight(barRatio.coerceIn(0.1f, 1f))
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .background(SecondaryEmerald)
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(day, style = MaterialTheme.typography.labelSmall, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                            }
+
+                            // Top Habit Streak Highlight
+                            val topHabitPair = habitStats.entries.maxByOrNull { entry -> entry.value.currentStreak }
+                            val topHabit = habits.find { h -> h.id == topHabitPair?.key }
+                            if (topHabit != null && topHabitPair != null && topHabitPair.value.currentStreak > 0) {
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Text("🔥", fontSize = 16.sp)
+                                        Column {
+                                            Text("Top Active Streak", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Text(topHabit.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                    Text(
+                                        text = "${topHabitPair.value.currentStreak} Days",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Color(0xFFD97706)
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
 
                 // ── Priority breakdown ──
@@ -302,6 +418,23 @@ fun InsightsScreen(
 }
 
 @Composable
+private fun TypeBadge(label: String, count: Int, color: Color) {
+    Surface(
+        color = color.copy(alpha = 0.12f),
+        shape = RoundedCornerShape(10.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = color)
+            Text("$count", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.ExtraBold, color = color)
+        }
+    }
+}
+
+@Composable
 private fun InsightHighlightCard(
     modifier: Modifier = Modifier,
     label: String,
@@ -338,43 +471,4 @@ private fun InsightSectionHeader(title: String, icon: ImageVector) {
         Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
         Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
     }
-}
-
-// Keep existing HighlightCard, StatItem, CategoryRow for backward compat
-@Composable
-fun HighlightCard(modifier: Modifier = Modifier, title: String, value: String, icon: ImageVector, iconColor: Color) {
-    Card(modifier = modifier, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(16.dp)) {
-        Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(32.dp))
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text(title, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
-
-@Composable
-fun StatItem(label: String, value: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-@Composable
-fun CategoryRow(category: String, count: Int, completed: Int) {
-    val completionRate = if (count > 0) completed.toFloat() / count else 0f
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Box(modifier = Modifier.size(12.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary))
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(category.ifEmpty { "Uncategorized" }, modifier = Modifier.weight(1f))
-        Text("$completed/$count", fontWeight = FontWeight.Bold)
-    }
-    Spacer(modifier = Modifier.height(4.dp))
-    LinearProgressIndicator(
-        progress = { completionRate },
-        modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
-        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-        trackColor = MaterialTheme.colorScheme.surfaceVariant
-    )
 }
