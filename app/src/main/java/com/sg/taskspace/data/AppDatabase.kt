@@ -14,7 +14,7 @@ import androidx.room.RoomDatabase
         Goal::class,
         Project::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -79,10 +79,29 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_6_7 = object : androidx.room.migration.Migration(6, 7) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE habits ADD COLUMN type TEXT NOT NULL DEFAULT 'BUILD'")
+                db.execSQL("ALTER TABLE habits ADD COLUMN targetValue REAL NOT NULL DEFAULT 1.0")
+                db.execSQL("ALTER TABLE habits ADD COLUMN unit TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE habits ADD COLUMN scheduleType TEXT NOT NULL DEFAULT 'DAILY'")
+                db.execSQL("ALTER TABLE habits ADD COLUMN selectedDays TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE habits ADD COLUMN weeklyTargetCount INTEGER NOT NULL DEFAULT 3")
+                db.execSQL("ALTER TABLE habits ADD COLUMN intervalDays INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE habits ADD COLUMN colorHex TEXT NOT NULL DEFAULT '#10B981'")
+                db.execSQL("ALTER TABLE habits ADD COLUMN iconName TEXT NOT NULL DEFAULT 'Check'")
+                db.execSQL("ALTER TABLE habits ADD COLUMN notes TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE habits ADD COLUMN reminderTime TEXT")
+
+                db.execSQL("ALTER TABLE habit_logs ADD COLUMN value REAL NOT NULL DEFAULT 1.0")
+                db.execSQL("ALTER TABLE habit_logs ADD COLUMN relapseNotes TEXT")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return Instance ?: synchronized(this) {
                 Room.databaseBuilder(context, AppDatabase::class.java, "taskspace_database")
-                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                     .fallbackToDestructiveMigrationFrom(true)
                     .build()
                     .also { Instance = it }
