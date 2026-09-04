@@ -46,6 +46,13 @@ class UserPreferencesRepository(private val context: Context) {
         val LAST_BACKGROUND_TIME = longPreferencesKey("last_background_time")
         // Gamification
         val TOTAL_XP = intPreferencesKey("total_xp")
+        // Vacation Mode
+        val IS_VACATION_MODE_ENABLED = booleanPreferencesKey("is_vacation_mode_enabled")
+        val VACATION_START_DATE = stringPreferencesKey("vacation_start_date")
+        val VACATION_END_DATE = stringPreferencesKey("vacation_end_date")
+        val VACATION_REASON = stringPreferencesKey("vacation_reason")
+        val FREEZE_HABIT_STREAKS = booleanPreferencesKey("freeze_habit_streaks")
+        val PAUSE_TASK_REMINDERS = booleanPreferencesKey("pause_task_reminders")
     }
 
     val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data
@@ -75,6 +82,12 @@ class UserPreferencesRepository(private val context: Context) {
             val autoLockTimeout = preferences[PreferencesKeys.AUTO_LOCK_TIMEOUT] ?: "Immediately"
             val lastBackgroundTimeMillis = preferences[PreferencesKeys.LAST_BACKGROUND_TIME] ?: 0L
             val totalXp = preferences[PreferencesKeys.TOTAL_XP] ?: 0
+            val isVacationModeEnabled = preferences[PreferencesKeys.IS_VACATION_MODE_ENABLED] ?: false
+            val vacationStartDate = preferences[PreferencesKeys.VACATION_START_DATE] ?: ""
+            val vacationEndDate = preferences[PreferencesKeys.VACATION_END_DATE] ?: ""
+            val vacationReason = preferences[PreferencesKeys.VACATION_REASON] ?: "Vacation"
+            val freezeHabitStreaks = preferences[PreferencesKeys.FREEZE_HABIT_STREAKS] ?: true
+            val pauseTaskReminders = preferences[PreferencesKeys.PAUSE_TASK_REMINDERS] ?: true
 
             UserPreferences(
                 userName = userName,
@@ -94,7 +107,13 @@ class UserPreferencesRepository(private val context: Context) {
                 isBiometricEnabled = isBiometricEnabled,
                 autoLockTimeout = autoLockTimeout,
                 lastBackgroundTimeMillis = lastBackgroundTimeMillis,
-                totalXp = totalXp
+                totalXp = totalXp,
+                isVacationModeEnabled = isVacationModeEnabled,
+                vacationStartDate = vacationStartDate,
+                vacationEndDate = vacationEndDate,
+                vacationReason = vacationReason,
+                freezeHabitStreaks = freezeHabitStreaks,
+                pauseTaskReminders = pauseTaskReminders
             )
         }
 
@@ -207,6 +226,33 @@ class UserPreferencesRepository(private val context: Context) {
         }
     }
 
+    suspend fun updateVacationMode(
+        enabled: Boolean,
+        startDate: String = "",
+        endDate: String = "",
+        reason: String = "Vacation",
+        freezeHabits: Boolean = true,
+        pauseReminders: Boolean = true
+    ) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.IS_VACATION_MODE_ENABLED] = enabled
+            preferences[PreferencesKeys.VACATION_START_DATE] = startDate
+            preferences[PreferencesKeys.VACATION_END_DATE] = endDate
+            preferences[PreferencesKeys.VACATION_REASON] = reason
+            preferences[PreferencesKeys.FREEZE_HABIT_STREAKS] = freezeHabits
+            preferences[PreferencesKeys.PAUSE_TASK_REMINDERS] = pauseReminders
+        }
+    }
+
+    suspend fun clearVacationMode() {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.IS_VACATION_MODE_ENABLED] = false
+            preferences[PreferencesKeys.VACATION_START_DATE] = ""
+            preferences[PreferencesKeys.VACATION_END_DATE] = ""
+            preferences[PreferencesKeys.VACATION_REASON] = ""
+        }
+    }
+
     suspend fun fetchInitialPreferences(): UserPreferences {
         return userPreferencesFlow.first()
     }
@@ -268,10 +314,41 @@ data class UserPreferences(
     @SerializedName("isBiometricEnabled") val isBiometricEnabled: Boolean = true,
     @SerializedName("autoLockTimeout") val autoLockTimeout: String = "Immediately",
     @SerializedName("lastBackgroundTimeMillis") val lastBackgroundTimeMillis: Long = 0L,
-    @SerializedName("totalXp") val totalXp: Int = 0
+    @SerializedName("totalXp") val totalXp: Int = 0,
+    @SerializedName("isVacationModeEnabled") val isVacationModeEnabled: Boolean = false,
+    @SerializedName("vacationStartDate") val vacationStartDate: String = "",
+    @SerializedName("vacationEndDate") val vacationEndDate: String = "",
+    @SerializedName("vacationReason") val vacationReason: String = "Vacation",
+    @SerializedName("freezeHabitStreaks") val freezeHabitStreaks: Boolean = true,
+    @SerializedName("pauseTaskReminders") val pauseTaskReminders: Boolean = true
 ) {
     // Gamification level calculation: Level = (XP / 100) + 1
     val level: Int get() = (totalXp / 100) + 1
     val currentLevelXp: Int get() = totalXp % 100
     val xpProgressFraction: Float get() = currentLevelXp.toFloat() / 100f
+
+    fun isDateInVacation(dateStr: String): Boolean {
+        if (!isVacationModeEnabled) return false
+        if (vacationStartDate.isBlank() || vacationEndDate.isBlank()) return true
+        return try {
+            val date = java.time.LocalDate.parse(dateStr)
+            val start = java.time.LocalDate.parse(vacationStartDate)
+            val end = java.time.LocalDate.parse(vacationEndDate)
+            !date.isBefore(start) && !date.isAfter(end)
+        } catch (e: Exception) {
+            true
+        }
+    }
+
+    fun isDateInVacation(date: java.time.LocalDate): Boolean {
+        if (!isVacationModeEnabled) return false
+        if (vacationStartDate.isBlank() || vacationEndDate.isBlank()) return true
+        return try {
+            val start = java.time.LocalDate.parse(vacationStartDate)
+            val end = java.time.LocalDate.parse(vacationEndDate)
+            !date.isBefore(start) && !date.isAfter(end)
+        } catch (e: Exception) {
+            true
+        }
+    }
 }
