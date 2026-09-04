@@ -32,6 +32,7 @@ import com.sg.taskspace.BuildConfig
 import com.sg.taskspace.ui.viewmodel.TaskViewModel
 import com.sg.taskspace.ui.components.BackupDiffDialog
 import com.sg.taskspace.data.BackupDiffResult
+import com.sg.taskspace.data.UserPreferences
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,6 +53,7 @@ fun SettingsScreen(
     var showPinSetupDialog by remember { mutableStateOf(false) }
     var showAutoLockTimeoutDialog by remember { mutableStateOf(false) }
     var showPermissionDeniedDialog by remember { mutableStateOf(false) }
+    var showVacationDialog by remember { mutableStateOf(false) }
     // Backup diff state
     var backupDiffResult by remember { mutableStateOf<BackupDiffResult?>(null) }
     var isRestoring by remember { mutableStateOf(false) }
@@ -486,6 +488,16 @@ fun SettingsScreen(
         )
     }
 
+    if (showVacationDialog && userPreferences != null) {
+        com.sg.taskspace.ui.components.VacationModeDialog(
+            userPreferences = userPreferences!!,
+            onDismiss = { showVacationDialog = false },
+            onSave = { enabled, startDate, endDate, reason, freezeHabits, pauseReminders ->
+                viewModel.setVacationMode(enabled, startDate, endDate, reason, freezeHabits, pauseReminders)
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -515,6 +527,22 @@ fun SettingsScreen(
                 subtitle = userPreferences?.userName ?: "User",
                 onClick = { showNameDialog = true },
                 trailingIcon = Icons.Default.Edit
+            )
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+            // ── Lifestyle & Vacation Mode ──
+            SettingsSectionTitle("Lifestyle & Break")
+            SettingsItem(
+                icon = Icons.Default.WbSunny,
+                title = "Vacation Mode 🌴",
+                subtitle = if (userPreferences?.isVacationModeEnabled == true) {
+                    "ACTIVE • ${userPreferences?.vacationReason ?: "Vacation"}"
+                } else {
+                    "Disabled • Freeze streaks & pause alerts"
+                },
+                onClick = { showVacationDialog = true },
+                trailingIcon = Icons.Default.ChevronRight
             )
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))

@@ -41,13 +41,25 @@ fun HabitScreen(
     val logsForSelectedDate by viewModel.logsForSelectedDate.collectAsState()
     val habitStats by viewModel.habitStats.collectAsState()
     val selectedDate by viewModel.selectedDate.collectAsState()
+    val userPreferences by viewModel.userPreferences.collectAsState()
 
     var showAddDialog by remember { mutableStateOf(false) }
     var habitToEdit by remember { mutableStateOf<Habit?>(null) }
     var habitForRelapseModal by remember { mutableStateOf<Habit?>(null) }
     var selectedFilter by remember { mutableStateOf("ALL") }
+    var showVacationDialog by remember { mutableStateOf(false) }
 
     val today = remember { LocalDate.now() }
+
+    if (showVacationDialog) {
+        com.sg.taskspace.ui.components.VacationModeDialog(
+            userPreferences = userPreferences,
+            onDismiss = { showVacationDialog = false },
+            onSave = { enabled, startDate, endDate, reason, freezeHabits, pauseReminders ->
+                viewModel.setVacationMode(enabled, startDate, endDate, reason, freezeHabits, pauseReminders)
+            }
+        )
+    }
 
     val filteredHabits = remember(habits, selectedFilter) {
         when (selectedFilter) {
@@ -65,6 +77,11 @@ fun HabitScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showVacationDialog = true }) {
+                        Text("🌴", fontSize = 18.sp)
                     }
                 }
             )
@@ -90,6 +107,13 @@ fun HabitScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            item {
+                com.sg.taskspace.ui.components.VacationModeBanner(
+                    userPreferences = userPreferences,
+                    onEndVacation = { viewModel.clearVacationMode() }
+                )
+            }
+
             // Heatmap Section
             item {
                 val completedMap = remember(allLogs) {

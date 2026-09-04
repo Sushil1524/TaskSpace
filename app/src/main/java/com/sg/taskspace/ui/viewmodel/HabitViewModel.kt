@@ -18,7 +18,13 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
-class HabitViewModel(private val habitRepository: HabitRepository) : ViewModel() {
+import com.sg.taskspace.data.UserPreferences
+import com.sg.taskspace.data.UserPreferencesRepository
+
+class HabitViewModel(
+    private val habitRepository: HabitRepository,
+    private val userPreferencesRepository: UserPreferencesRepository
+) : ViewModel() {
 
     private val _selectedDate = MutableStateFlow(LocalDate.now())
     val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
@@ -28,6 +34,9 @@ class HabitViewModel(private val habitRepository: HabitRepository) : ViewModel()
 
     val allLogs: StateFlow<List<HabitLog>> = habitRepository.allHabitLogs
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val userPreferences: StateFlow<UserPreferences> = userPreferencesRepository.userPreferencesFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserPreferences("User", false))
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val logsForSelectedDate: StateFlow<List<HabitLog>> = _selectedDate
@@ -44,15 +53,22 @@ class HabitViewModel(private val habitRepository: HabitRepository) : ViewModel()
     )
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val habitStats: StateFlow<Map<String, HabitStats>> = habits
-        .flatMapLatest { habitList ->
+    val habitStats: StateFlow<Map<String, HabitStats>> = combine(
+        habits,
+        userPreferencesRepository.userPreferencesFlow
+    ) { habitList: List<Habit>, prefs: UserPreferences ->
+        habitList to prefs
+    }
+        .flatMapLatest { pair: Pair<List<Habit>, UserPreferences> ->
+            val habitList = pair.first
+            val prefs = pair.second
             if (habitList.isEmpty()) {
-                flowOf(emptyMap())
+                flowOf(emptyMap<String, HabitStats>())
             } else {
-                val statsFlows = habitList.map { habit ->
+                val statsFlows: List<Flow<Pair<String, HabitStats>>> = habitList.map { habit ->
                     habitRepository.getAllLogsForHabit(habit.id)
                         .map { logs ->
-                            calculateStatsForHabit(habit, logs)
+                            calculateStatsForHabit(habit, logs, prefs)
                         }
                 }
                 combine(statsFlows) { pairs -> pairs.toMap() }
@@ -60,7 +76,7 @@ class HabitViewModel(private val habitRepository: HabitRepository) : ViewModel()
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
-    private fun calculateStatsForHabit(habit: Habit, logs: List<HabitLog>): Pair<String, HabitStats> {
+    private fun calculateStatsForHabit(habit: Habit, logs: List<HabitLog>, prefs: UserPreferences): Pair<String, HabitStats> {
         val today = LocalDate.now()
         val createdDate = Instant.ofEpochMilli(habit.createdAt)
             .atZone(ZoneId.systemDefault())
@@ -87,7 +103,7 @@ class HabitViewModel(private val habitRepository: HabitRepository) : ViewModel()
         }
 
         // BUILD or NUMERIC
-        val completedDates = logs.filter { log ->
+        val completedDateSet = logs.filter { log ->
             if (habit.type == "NUMERIC") {
                 log.value >= habit.targetValue
             } else {
@@ -95,46 +111,44 @@ class HabitViewModel(private val habitRepository: HabitRepository) : ViewModel()
             }
         }
             .map { LocalDate.parse(it.date, DateTimeFormatter.ISO_DATE) }
-            .sortedDescending()
-            .distinct()
+            .toSet()
 
         var currentStreak = 0
-        var maxStreak = 0
-        var tempStreak = 0
-
-        val ascendingDates = completedDates.reversed()
-        if (ascendingDates.isNotEmpty()) {
-            tempStreak = 1
-            maxStreak = 1
-            for (i in 1 until ascendingDates.size) {
-                if (ascendingDates[i - 1].plusDays(1) == ascendingDates[i]) {
-                    tempStreak++
-                    maxStreak = maxOf(maxStreak, tempStreak)
-                } else {
-                    tempStreak = 1
-                }
-            }
+        var checkDate = today
+        if (!completedDateSet.contains(today) && !(prefs.freezeHabitStreaks && prefs.isDateInVacation(today))) {
+            checkDate = today.minusDays(1)
         }
 
-        val yesterday = today.minusDays(1)
-        if (completedDates.contains(today) || completedDates.contains(yesterday)) {
-            currentStreak = 1
-            var expectedPrevDate = if (completedDates.contains(today)) today.minusDays(1) else yesterday.minusDays(1)
-            val startIndex = if (completedDates.contains(today)) 1 else completedDates.indexOf(yesterday) + 1
-
-            for (i in startIndex until completedDates.size) {
-                if (completedDates[i] == expectedPrevDate) {
-                    currentStreak++
-                    expectedPrevDate = expectedPrevDate.minusDays(1)
-                } else {
-                    break
-                }
+        while (true) {
+            if (completedDateSet.contains(checkDate)) {
+                currentStreak++
+                checkDate = checkDate.minusDays(1)
+            } else if (prefs.freezeHabitStreaks && prefs.isDateInVacation(checkDate)) {
+                checkDate = checkDate.minusDays(1)
+            } else {
+                break
             }
+            if (checkDate.isBefore(createdDate.minusDays(365))) break
+        }
+
+        var maxStreak = currentStreak
+        var tempStreak = 0
+        var iterDate = createdDate
+        while (!iterDate.isAfter(today)) {
+            if (completedDateSet.contains(iterDate)) {
+                tempStreak++
+                maxStreak = maxOf(maxStreak, tempStreak)
+            } else if (prefs.freezeHabitStreaks && prefs.isDateInVacation(iterDate)) {
+                // frozen vacation day does not break the streak
+            } else {
+                tempStreak = 0
+            }
+            iterDate = iterDate.plusDays(1)
         }
 
         return habit.id to HabitStats(
             currentStreak = currentStreak,
-            maxStreak = maxOf(maxStreak, currentStreak),
+            maxStreak = maxStreak,
             createdAt = habit.createdAt
         )
     }
@@ -174,9 +188,11 @@ class HabitViewModel(private val habitRepository: HabitRepository) : ViewModel()
         viewModelScope.launch {
             if (existingLog != null) {
                 val newStatus = !existingLog.isCompleted
-                val newValue = if (newStatus) habit.targetValue else 0f
                 habitRepository.insertHabitLog(
-                    existingLog.copy(isCompleted = newStatus, value = newValue)
+                    existingLog.copy(
+                        isCompleted = newStatus,
+                        value = if (newStatus) habit.targetValue else 0f
+                    )
                 )
             } else {
                 habitRepository.insertHabitLog(
@@ -239,13 +255,40 @@ class HabitViewModel(private val habitRepository: HabitRepository) : ViewModel()
         }
     }
 
+    fun setVacationMode(
+        enabled: Boolean,
+        startDate: String = "",
+        endDate: String = "",
+        reason: String = "Vacation",
+        freezeHabits: Boolean = true,
+        pauseReminders: Boolean = true
+    ) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateVacationMode(
+                enabled = enabled,
+                startDate = startDate,
+                endDate = endDate,
+                reason = reason,
+                freezeHabits = freezeHabits,
+                pauseReminders = pauseReminders
+            )
+        }
+    }
+
+    fun clearVacationMode() {
+        viewModelScope.launch {
+            userPreferencesRepository.clearVacationMode()
+        }
+    }
+
     companion object {
         val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
                 val application = checkNotNull(extras[APPLICATION_KEY])
                 val database = AppDatabase.getDatabase(application)
-                return HabitViewModel(HabitRepository(database.habitDao())) as T
+                val userPrefsRepo = UserPreferencesRepository(application)
+                return HabitViewModel(HabitRepository(database.habitDao()), userPrefsRepo) as T
             }
         }
     }
