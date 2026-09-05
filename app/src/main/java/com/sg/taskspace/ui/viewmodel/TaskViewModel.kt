@@ -575,6 +575,32 @@ class TaskViewModel(
         }
     }
 
+    fun setVacationMode(
+        enabled: Boolean,
+        startDate: String = "",
+        endDate: String = "",
+        reason: String = "Vacation",
+        freezeHabits: Boolean = true,
+        pauseReminders: Boolean = true
+    ) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateVacationMode(
+                enabled = enabled,
+                startDate = startDate,
+                endDate = endDate,
+                reason = reason,
+                freezeHabits = freezeHabits,
+                pauseReminders = pauseReminders
+            )
+        }
+    }
+
+    fun clearVacationMode() {
+        viewModelScope.launch {
+            userPreferencesRepository.clearVacationMode()
+        }
+    }
+
     fun getTaskById(taskId: String): Flow<Task?> {
         return taskRepository.getTaskById(taskId)
     }

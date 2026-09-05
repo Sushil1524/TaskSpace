@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
@@ -73,6 +74,17 @@ fun HomeScreen(
     var showFinishedSection by remember { mutableStateOf(true) }
     var selectedTask by remember { mutableStateOf<Task?>(null) }
     var selectedDayForDialog by remember { mutableStateOf<LocalDate?>(null) }
+    var showVacationDialog by remember { mutableStateOf(false) }
+
+    if (showVacationDialog && userPreferences != null) {
+        com.sg.taskspace.ui.components.VacationModeDialog(
+            userPreferences = userPreferences!!,
+            onDismiss = { showVacationDialog = false },
+            onSave = { enabled, startDate, endDate, reason, freezeHabits, pauseReminders ->
+                viewModel.setVacationMode(enabled, startDate, endDate, reason, freezeHabits, pauseReminders)
+            }
+        )
+    }
 
     // Task Detail Dialog
     if (selectedTask != null) {
@@ -142,6 +154,9 @@ fun HomeScreen(
                         color = MaterialTheme.colorScheme.onBackground
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        IconButton(onClick = { showVacationDialog = true }) {
+                            Icon(Icons.Default.CalendarMonth, contentDescription = "Vacation Mode", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         IconButton(onClick = onHistoryClick) {
                             Icon(Icons.Default.History, contentDescription = "History", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
@@ -177,6 +192,14 @@ fun HomeScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            item {
+                userPreferences?.let { prefs ->
+                    com.sg.taskspace.ui.components.VacationModeBanner(
+                        userPreferences = prefs,
+                        onEndVacation = { viewModel.clearVacationMode() }
+                    )
+                }
+            }
             item {
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 4.dp),

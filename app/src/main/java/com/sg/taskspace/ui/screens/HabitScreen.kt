@@ -81,7 +81,7 @@ fun HabitScreen(
                 },
                 actions = {
                     IconButton(onClick = { showVacationDialog = true }) {
-                        Text("🌴", fontSize = 18.sp)
+                        Icon(Icons.Default.CalendarMonth, contentDescription = "Vacation Mode")
                     }
                 }
             )

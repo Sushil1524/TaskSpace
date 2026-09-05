@@ -534,8 +534,8 @@ fun SettingsScreen(
             // ── Lifestyle & Vacation Mode ──
             SettingsSectionTitle("Lifestyle & Break")
             SettingsItem(
-                icon = Icons.Default.WbSunny,
-                title = "Vacation Mode 🌴",
+                icon = Icons.Default.CalendarMonth,
+                title = "Vacation Mode",
                 subtitle = if (userPreferences?.isVacationModeEnabled == true) {
                     "ACTIVE • ${userPreferences?.vacationReason ?: "Vacation"}"
                 } else {
