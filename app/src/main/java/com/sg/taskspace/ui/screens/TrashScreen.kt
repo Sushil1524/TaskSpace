@@ -40,6 +40,7 @@ fun TrashScreen(
     var selectedCategory by remember { mutableStateOf("All") }
     var showEmptyTrashDialog by remember { mutableStateOf(false) }
     var itemToDeletePermanently by remember { mutableStateOf<TrashItem?>(null) }
+    var itemToRestore by remember { mutableStateOf<TrashItem?>(null) }
 
     val categories = listOf("All", "Task", "Habit", "Journal", "Goal", "Project")
 
@@ -191,13 +192,39 @@ fun TrashScreen(
                     items(filteredItems, key = { "${it.typeName}_${it.id}" }) { item ->
                         TrashItemCard(
                             item = item,
-                            onRestore = { trashViewModel.restoreItem(item) },
+                            onRestore = { itemToRestore = item },
                             onDeletePermanently = { itemToDeletePermanently = item }
                         )
                     }
                 }
             }
         }
+    }
+
+    // Confirmation Dialog for Restore Item
+    itemToRestore?.let { item ->
+        AlertDialog(
+            onDismissRequest = { itemToRestore = null },
+            title = { Text("Restore ${item.typeName}?", fontWeight = FontWeight.Bold) },
+            text = { Text("Are you sure you want to restore \"${item.title}\" back to active ${item.typeName.lowercase()}s?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        trashViewModel.restoreItem(item)
+                        itemToRestore = null
+                    },
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Restore")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { itemToRestore = null }) {
+                    Text("Cancel")
+                }
+            },
+            shape = RoundedCornerShape(20.dp)
+        )
     }
 
     // Confirmation Dialog for Empty Trash

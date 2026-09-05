@@ -30,7 +30,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -76,6 +78,23 @@ fun HomeScreen(
     var selectedDayForDialog by remember { mutableStateOf<LocalDate?>(null) }
     var showVacationDialog by remember { mutableStateOf(false) }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun deleteTaskWithUndo(taskToDelete: Task) {
+        viewModel.deleteTask(taskToDelete)
+        coroutineScope.launch {
+            val result = snackbarHostState.showSnackbar(
+                message = "'${taskToDelete.title}' moved to trash",
+                actionLabel = "Undo",
+                duration = SnackbarDuration.Short
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.restoreTask(taskToDelete.id)
+            }
+        }
+    }
+
     if (showVacationDialog && userPreferences != null) {
         com.sg.taskspace.ui.components.VacationModeDialog(
             userPreferences = userPreferences!!,
@@ -97,7 +116,7 @@ fun HomeScreen(
                 selectedTask = null
             },
             onDeleteTask = { taskToDelete ->
-                viewModel.deleteTask(taskToDelete)
+                deleteTaskWithUndo(taskToDelete)
                 selectedTask = null
             }
         )
@@ -134,6 +153,7 @@ fun HomeScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             Surface(
                 color = MaterialTheme.colorScheme.background,
@@ -250,7 +270,7 @@ fun HomeScreen(
                         val done = tasks.count { it.isCompleted }
                         val motivation = when {
                             total == 0 -> "No tasks yet. Add one!"
-                            done == total -> "All tasks completed! Great job! 🎉"
+                            done == total -> "All tasks completed! Great job!"
                             else -> "You've completed $done out of $total tasks."
                         }
                         Text(
@@ -366,7 +386,7 @@ fun HomeScreen(
                         task = task,
                         onCheckedChange = { viewModel.toggleTaskCompletion(task) },
                         onClick = { selectedTask = task },
-                        onDelete = { viewModel.deleteTask(task) },
+                        onDelete = { deleteTaskWithUndo(task) },
                         onSnooze = { viewModel.snoozeTaskToTomorrow(task) },
                         projectName = task.projectId?.let { projectsMap[it]?.name },
                         swipeRightAction = swipeRightAction,
@@ -406,7 +426,7 @@ fun HomeScreen(
                                 task = task,
                                 onCheckedChange = { viewModel.toggleTaskCompletion(task) },
                                 onClick = { selectedTask = task },
-                                onDelete = { viewModel.deleteTask(task) },
+                                onDelete = { deleteTaskWithUndo(task) },
                                 onSnooze = { viewModel.snoozeTaskToTomorrow(task) },
                                 projectName = task.projectId?.let { projectsMap[it]?.name },
                                 swipeRightAction = swipeRightAction,

@@ -183,7 +183,7 @@ class HabitViewModel(
 
     fun toggleHabitCompletion(habit: Habit, date: LocalDate, logs: List<HabitLog>) {
         val dateString = date.format(DateTimeFormatter.ISO_DATE)
-        val existingLog = logs.find { it.habitId == habit.id }
+        val existingLog = logs.find { it.habitId == habit.id && it.date == dateString }
 
         viewModelScope.launch {
             if (existingLog != null) {
@@ -209,7 +209,7 @@ class HabitViewModel(
 
     fun updateNumericProgress(habit: Habit, date: LocalDate, delta: Float, logs: List<HabitLog>) {
         val dateString = date.format(DateTimeFormatter.ISO_DATE)
-        val existingLog = logs.find { it.habitId == habit.id }
+        val existingLog = logs.find { it.habitId == habit.id && it.date == dateString }
         val currentValue = existingLog?.value ?: 0f
         val newValue = (currentValue + delta).coerceAtLeast(0f)
         val isCompleted = newValue >= habit.targetValue
@@ -234,7 +234,7 @@ class HabitViewModel(
 
     fun logRelapse(habit: Habit, date: LocalDate, relapseNotes: String?, logs: List<HabitLog>) {
         val dateString = date.format(DateTimeFormatter.ISO_DATE)
-        val existingLog = logs.find { it.habitId == habit.id }
+        val existingLog = logs.find { it.habitId == habit.id && it.date == dateString }
 
         viewModelScope.launch {
             if (existingLog != null) {

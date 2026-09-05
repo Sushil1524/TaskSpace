@@ -13,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,6 +52,9 @@ fun HabitScreen(
 
     val today = remember { LocalDate.now() }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+
     if (showVacationDialog) {
         com.sg.taskspace.ui.components.VacationModeDialog(
             userPreferences = userPreferences,
@@ -71,6 +75,7 @@ fun HabitScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Habit Tracker", fontWeight = FontWeight.Bold) },
@@ -162,9 +167,9 @@ fun HabitScreen(
                 ) {
                     val filters = listOf(
                         "ALL" to "All",
-                        "BUILD" to "🟢 Build",
-                        "QUIT" to "🛑 Quit",
-                        "NUMERIC" to "📊 Target"
+                        "BUILD" to "Build",
+                        "QUIT" to "Quit",
+                        "NUMERIC" to "Target"
                     )
                     filters.forEach { (key, label) ->
                         FilterChip(
@@ -172,6 +177,55 @@ fun HabitScreen(
                             onClick = { selectedFilter = key },
                             label = { Text(label, fontSize = 12.sp) }
                         )
+                    }
+                }
+            }
+
+            // 7-Day Day Selector Bubble Bar
+            item {
+                val startOfWeek = selectedDate.with(DayOfWeek.MONDAY)
+                val weekDays = (0..6).map { startOfWeek.plusDays(it.toLong()) }
+
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        weekDays.forEach { date ->
+                            val isSelected = date == selectedDate
+
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable { viewModel.selectDate(date) }
+                                    .background(
+                                        if (isSelected) MaterialTheme.colorScheme.primary
+                                        else Color.Transparent
+                                    )
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text = date.dayOfWeek.name.take(3),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = date.dayOfMonth.toString(),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -211,7 +265,20 @@ fun HabitScreen(
                         habitToEdit = habit
                         showAddDialog = true
                     },
-                    onDeleteClick = { viewModel.deleteHabit(habit) }
+                    onDeleteClick = {
+                        val habitToDelete = habit
+                        viewModel.deleteHabit(habitToDelete)
+                        coroutineScope.launch {
+                            val result = snackbarHostState.showSnackbar(
+                                message = "'${habitToDelete.name}' moved to trash",
+                                actionLabel = "Undo",
+                                duration = SnackbarDuration.Short
+                            )
+                            if (result == SnackbarResult.ActionPerformed) {
+                                viewModel.restoreHabit(habitToDelete.id)
+                            }
+                        }
+                    }
                 )
             }
 
@@ -365,9 +432,9 @@ fun HabitCard(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             val typeBadge = when (habit.type) {
-                                "QUIT" -> "🛑 Quit"
-                                "NUMERIC" -> "📊 Target"
-                                else -> "🟢 Build"
+                                "QUIT" -> "Quit"
+                                "NUMERIC" -> "Target"
+                                else -> "Build"
                             }
                             Text(
                                 text = typeBadge,
@@ -401,7 +468,8 @@ fun HabitCard(
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("🔥 ", fontSize = 12.sp)
+                            Icon(Icons.Default.LocalFireDepartment, contentDescription = null, tint = Color(0xFFD97706), modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(2.dp))
                             Text(
                                 text = "${stats.currentStreak}d",
                                 style = MaterialTheme.typography.labelMedium,
@@ -434,14 +502,17 @@ fun HabitCard(
             ) {
                 weekDays.forEach { date ->
                     val dateIso = date.format(DateTimeFormatter.ISO_DATE)
-                    val dayLog = allHabitLogs.find { it.date == dateIso }
-                    val isDone = dayLog?.isCompleted == true
+                    val dayLog = allHabitLogs.find { it.habitId == habit.id && it.date == dateIso }
                     val isFuture = date > today
                     val isToday = date == today
 
+                    val isQuit = habit.type == "QUIT"
+                    val hasRelapse = isQuit && (dayLog != null && (dayLog.relapseNotes != null || !dayLog.isCompleted))
+                    val isDone = if (isQuit) (!hasRelapse && !isFuture) else (dayLog?.isCompleted == true)
+
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.clickable(enabled = !isFuture) {
+                        modifier = Modifier.clickable(enabled = isToday) {
                             onDayToggle(date)
                         }
                     ) {
@@ -458,6 +529,7 @@ fun HabitCard(
                                 .clip(CircleShape)
                                 .background(
                                     when {
+                                        hasRelapse -> MaterialTheme.colorScheme.error
                                         isDone -> habitColor
                                         isFuture -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
                                         else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
@@ -470,7 +542,14 @@ fun HabitCard(
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
-                            if (isDone) {
+                            if (hasRelapse) {
+                                Icon(
+                                    imageVector = Icons.Default.PriorityHigh,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            } else if (isDone) {
                                 Icon(
                                     imageVector = Icons.Default.Check,
                                     contentDescription = null,
@@ -534,17 +613,28 @@ fun HabitCard(
                 }
 
                 "QUIT" -> {
+                    val hasRelapseToday = todayLog != null && (todayLog.relapseNotes != null || !todayLog.isCompleted)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "${stats?.daysClean ?: 0} Days Clean",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = habitColor
-                        )
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (hasRelapseToday) MaterialTheme.colorScheme.errorContainer else habitColor.copy(alpha = 0.15f)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = if (hasRelapseToday) "Relapsed Today" else "Clean Today • ${stats?.daysClean ?: 0}d Clean",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (hasRelapseToday) MaterialTheme.colorScheme.onErrorContainer else habitColor
+                                )
+                            }
+                        }
 
                         OutlinedButton(
                             onClick = onRelapseClick,
@@ -554,7 +644,7 @@ fun HabitCard(
                         ) {
                             Icon(Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(14.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("I Relapsed", fontSize = 11.sp)
+                            Text("Log Relapse", fontSize = 11.sp)
                         }
                     }
                 }
