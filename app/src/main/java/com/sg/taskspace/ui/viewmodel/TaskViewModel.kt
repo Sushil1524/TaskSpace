@@ -386,7 +386,11 @@ class TaskViewModel(
         val bestDayOfWeek: String,
         val currentStreak: Int,
         val categoryDistribution: Map<String, Pair<Int, Int>>, // Total, Completed
-        val needsFocus: String
+        val needsFocus: String,
+        val totalEstimatedMinutes: Int = 0,
+        val completedEstimatedMinutes: Int = 0,
+        val avgDailyWorkloadMinutes: Int = 0,
+        val projectDistribution: Map<String, Pair<Int, Int>> = emptyMap() // ProjectId -> (Total, Completed)
     )
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -466,6 +470,17 @@ class TaskViewModel(
                         if (total > 0) completed.toFloat() / total else 1f // If 0 tasks, ignore (shouldn't happen due to filter)
                     }?.key?.ifEmpty { "Uncategorized" } ?: "None"
 
+                // 6. Time Estimates & Workload Analytics
+                val totalEstMin = allMonthTasks.sumOf { it.estimatedMinutes }
+                val completedEstMin = allMonthTasks.filter { it.isCompleted }.sumOf { it.estimatedMinutes }
+                val daysInMonth = endOfMonth.dayOfMonth
+                val avgDailyWorkload = if (daysInMonth > 0) totalEstMin / daysInMonth else 0
+
+                // 7. Project Distribution
+                val projectDist = allMonthTasks.filter { !it.projectId.isNullOrBlank() }
+                    .groupBy { it.projectId!! }
+                    .mapValues { entry -> Pair(entry.value.size, entry.value.count { it.isCompleted }) }
+
                 InsightsData(
                     totalTasksThisMonth = totalMonth,
                     completedTasksThisMonth = completedMonth,
@@ -473,11 +488,15 @@ class TaskViewModel(
                     bestDayOfWeek = bestDay,
                     currentStreak = streak,
                     categoryDistribution = categories,
-                    needsFocus = needsFocus
+                    needsFocus = needsFocus,
+                    totalEstimatedMinutes = totalEstMin,
+                    completedEstimatedMinutes = completedEstMin,
+                    avgDailyWorkloadMinutes = avgDailyWorkload,
+                    projectDistribution = projectDist
                 )
             } catch (e: Exception) {
                 e.printStackTrace()
-                InsightsData(0, 0, 0, "Error", 0, emptyMap(), "Error")
+                InsightsData(0, 0, 0, "Error", 0, emptyMap(), "Error", 0, 0, 0, emptyMap())
             }
         }
     }

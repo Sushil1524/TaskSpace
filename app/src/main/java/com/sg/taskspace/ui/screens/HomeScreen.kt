@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Loop
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material3.*
@@ -268,6 +269,8 @@ fun HomeScreen(
 
                         val total = tasks.size
                         val done = tasks.count { it.isCompleted }
+                        val totalEstMinutes = tasks.sumOf { it.estimatedMinutes }
+                        val doneEstMinutes = tasks.filter { it.isCompleted }.sumOf { it.estimatedMinutes }
                         val motivation = when {
                             total == 0 -> "No tasks yet. Add one!"
                             done == total -> "All tasks completed! Great job!"
@@ -284,6 +287,7 @@ fun HomeScreen(
                             val progress = if (total > 0) (done.toFloat() / total * 100).toInt() else 0
                             StatColumn("Total", total.toString())
                             StatColumn("Done", done.toString())
+                            StatColumn("Est. Time", formatMinutes(totalEstMinutes))
                             StatColumn("Progress", "$progress%")
                         }
                         Spacer(modifier = Modifier.height(12.dp))
@@ -294,6 +298,43 @@ fun HomeScreen(
                             color = MaterialTheme.colorScheme.primary,
                             trackColor = MaterialTheme.colorScheme.background
                         )
+
+                        // Daily Workload & Time Estimates Pill
+                        if (totalEstMinutes > 0) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Surface(
+                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Icon(
+                                            imageVector = Icons.Default.Schedule,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Text(
+                                            text = "Daily Workload",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                    Text(
+                                        text = "${formatMinutes(doneEstMinutes)} of ${formatMinutes(totalEstMinutes)} completed",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -470,4 +511,11 @@ fun QuickActionCard(label: String, icon: ImageVector, modifier: Modifier = Modif
             Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
         }
     }
+}
+
+private fun formatMinutes(totalMinutes: Int): String {
+    if (totalMinutes <= 0) return "0m"
+    val hours = totalMinutes / 60
+    val mins = totalMinutes % 60
+    return if (hours > 0 && mins > 0) "${hours}h ${mins}m" else if (hours > 0) "${hours}h" else "${mins}m"
 }

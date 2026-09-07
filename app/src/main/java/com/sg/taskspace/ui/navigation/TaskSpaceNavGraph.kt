@@ -385,6 +385,7 @@ fun TaskSpaceNavGraph(
                 InsightsScreen(
                     viewModel = taskViewModel,
                     habitViewModel = habitViewModel,
+                    projectViewModel = projectViewModel,
                     onNavigateBack = { 
                         if (navController.previousBackStackEntry != null) {
                             navController.popBackStack()

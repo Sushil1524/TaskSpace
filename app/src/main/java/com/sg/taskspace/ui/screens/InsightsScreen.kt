@@ -40,6 +40,7 @@ import java.time.format.DateTimeFormatter
 fun InsightsScreen(
     viewModel: TaskViewModel,
     habitViewModel: HabitViewModel? = null,
+    projectViewModel: com.sg.taskspace.ui.viewmodel.ProjectViewModel? = null,
     onNavigateBack: () -> Unit
 ) {
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
@@ -54,6 +55,9 @@ fun InsightsScreen(
 
     val habitStatsState = habitViewModel?.habitStats?.collectAsState()
     val habitStats: Map<String, HabitViewModel.HabitStats> = habitStatsState?.value ?: emptyMap()
+
+    val projectsState = projectViewModel?.projects?.collectAsState()
+    val projects = projectsState?.value ?: emptyList()
 
     // Category colors
     val categoryColors = listOf(
@@ -393,13 +397,97 @@ fun InsightsScreen(
                     }
                 }
 
+                // ── Daily Workload & Time Estimates ──
+                InsightSectionHeader("Daily Workload & Time Estimates", Icons.Default.Schedule)
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(horizontalAlignment = Alignment.Start) {
+                                Text("Total Planned", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(formatEstimatedMinutes(data.totalEstimatedMinutes), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            }
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("Completed", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(formatEstimatedMinutes(data.completedEstimatedMinutes), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = SecondaryEmerald)
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("Avg Workload", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("${formatEstimatedMinutes(data.avgDailyWorkloadMinutes)}/day", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = PrimaryIndigo)
+                            }
+                        }
+
+                        val timeRate = if (data.totalEstimatedMinutes > 0) (data.completedEstimatedMinutes.toFloat() / data.totalEstimatedMinutes).coerceIn(0f, 1f) else 0f
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("Time Completion Rate", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("${(timeRate * 100).toInt()}%", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            }
+                            LinearProgressIndicator(
+                                progress = { timeRate },
+                                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                                color = SecondaryEmerald,
+                                trackColor = MaterialTheme.colorScheme.surface
+                            )
+                        }
+                    }
+                }
+
+                // ── Projects & Milestone Breakdown ──
+                if (projects.isNotEmpty() || data.projectDistribution.isNotEmpty()) {
+                    InsightSectionHeader("Projects & Milestone Progress", Icons.Default.Folder)
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                            if (projects.isEmpty()) {
+                                Box(modifier = Modifier.fillMaxWidth().padding(12.dp), contentAlignment = Alignment.Center) {
+                                    Text("No active projects assigned this month", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                                }
+                            } else {
+                                projects.forEach { project ->
+                                    val (totalTasks, completedTasks) = data.projectDistribution[project.id] ?: Pair(0, 0)
+                                    val progress = if (totalTasks > 0) completedTasks.toFloat() / totalTasks else 0f
+                                    val projColor = runCatching { Color(android.graphics.Color.parseColor(project.colorHex)) }.getOrDefault(PrimaryIndigo)
+
+                                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(projColor))
+                                                Text(project.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                            }
+                                            Text("$completedTasks/$totalTasks Done", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                                        }
+                                        LinearProgressIndicator(
+                                            progress = { progress },
+                                            modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
+                                            color = projColor,
+                                            trackColor = MaterialTheme.colorScheme.surface
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // ── Motivational summary ──
                 val motivationMsg = when {
-                    data.completionRateThisMonth >= 90 -> "🏆 Outstanding! You're crushing it this month!"
-                    data.completionRateThisMonth >= 70 -> "🚀 Great momentum! Keep pushing forward."
-                    data.completionRateThisMonth >= 50 -> "💪 Good progress. Half-way there!"
-                    data.completionRateThisMonth > 0 -> "📈 Building momentum. Every task counts."
-                    else -> "🌱 Start tracking tasks to see your insights here."
+                    data.completionRateThisMonth >= 90 -> "Outstanding! You're crushing it this month!"
+                    data.completionRateThisMonth >= 70 -> "Great momentum! Keep pushing forward."
+                    data.completionRateThisMonth >= 50 -> "Good progress. Half-way there!"
+                    data.completionRateThisMonth > 0 -> "Building momentum. Every task counts."
+                    else -> "Start tracking tasks to see your insights here."
                 }
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
@@ -471,4 +559,11 @@ private fun InsightSectionHeader(title: String, icon: ImageVector) {
         Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
         Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
     }
+}
+
+private fun formatEstimatedMinutes(totalMinutes: Int): String {
+    if (totalMinutes <= 0) return "0m"
+    val hours = totalMinutes / 60
+    val mins = totalMinutes % 60
+    return if (hours > 0) "${hours}h ${mins}m" else "${mins}m"
 }
