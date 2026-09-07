@@ -13,9 +13,19 @@ import com.sg.taskspace.ui.screens.AppLockScreen
 import com.sg.taskspace.ui.theme.TaskSpaceTheme
 import com.sg.taskspace.ui.viewmodel.TaskViewModel
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+
 class MainActivity : AppCompatActivity() {
 
     private val taskViewModel: TaskViewModel by viewModels { TaskViewModel.Factory }
+
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { _ -> }
 
     /** Maps safe 16-bit code → original 32-bit code sent by ActivityResultRegistry */
     private val requestCodeMap = HashMap<Int, Int>()
@@ -24,6 +34,13 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         window.decorView.setBackgroundColor(android.graphics.Color.BLACK)
+
+        com.sg.taskspace.util.NotificationHelper.createNotificationChannel(this)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
 
         taskViewModel.checkAndApplyAppLockOnForeground()
 
@@ -49,6 +66,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    @Deprecated("Deprecated in Java")
+    @Suppress("DEPRECATION")
     override fun startActivityForResult(intent: Intent, requestCode: Int) {
         if (requestCode == -1) {
             super.startActivityForResult(intent, requestCode)
@@ -59,6 +78,8 @@ class MainActivity : AppCompatActivity() {
         super.startActivityForResult(intent, safeCode)
     }
 
+    @Deprecated("Deprecated in Java")
+    @Suppress("DEPRECATION")
     override fun startActivityForResult(intent: Intent, requestCode: Int, options: Bundle?) {
         if (requestCode == -1) {
             super.startActivityForResult(intent, requestCode, options)
@@ -69,6 +90,7 @@ class MainActivity : AppCompatActivity() {
         super.startActivityForResult(intent, safeCode, options)
     }
 
+    @Deprecated("Deprecated in Java")
     @Suppress("DEPRECATION")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         val originalCode = requestCodeMap.remove(requestCode) ?: requestCode

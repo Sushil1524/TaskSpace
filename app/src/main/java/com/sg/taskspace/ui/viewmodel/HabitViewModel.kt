@@ -49,7 +49,8 @@ class HabitViewModel(
         val currentStreak: Int,
         val maxStreak: Int,
         val createdAt: Long,
-        val daysClean: Int = 0
+        val daysClean: Int = 0,
+        val habitStrength: Int = 0
     )
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -85,20 +86,35 @@ class HabitViewModel(
         if (habit.type == "QUIT") {
             val relapseLogs = logs.filter { it.relapseNotes != null || !it.isCompleted }
                 .map { LocalDate.parse(it.date, DateTimeFormatter.ISO_DATE) }
-                .sortedDescending()
+                .toSet()
 
-            val lastRelapse = relapseLogs.firstOrNull()
+            val lastRelapse = relapseLogs.maxOrNull()
             val daysClean = if (lastRelapse != null) {
                 ChronoUnit.DAYS.between(lastRelapse, today).toInt().coerceAtLeast(0)
             } else {
                 ChronoUnit.DAYS.between(createdDate, today).toInt().coerceAtLeast(0)
             }
 
+            // Calculate rolling habit strength over 30 days
+            var strength = 0.0f
+            val startDate = if (createdDate.isAfter(today.minusDays(30))) createdDate else today.minusDays(30)
+            var curDate = startDate
+            while (!curDate.isAfter(today)) {
+                if (relapseLogs.contains(curDate)) {
+                    strength *= 0.4f
+                } else {
+                    strength += (1.0f - strength) * 0.12f
+                }
+                curDate = curDate.plusDays(1)
+            }
+            val habitStrength = (strength * 100).toInt().coerceIn(0, 100)
+
             return habit.id to HabitStats(
                 currentStreak = daysClean,
                 maxStreak = daysClean,
                 createdAt = habit.createdAt,
-                daysClean = daysClean
+                daysClean = daysClean,
+                habitStrength = habitStrength
             )
         }
 
@@ -146,10 +162,27 @@ class HabitViewModel(
             iterDate = iterDate.plusDays(1)
         }
 
+        // Calculate rolling habit strength (30-day exponential smoothing)
+        var strength = 0.0f
+        val startDate = if (createdDate.isAfter(today.minusDays(30))) createdDate else today.minusDays(30)
+        var curDate = startDate
+        while (!curDate.isAfter(today)) {
+            if (prefs.freezeHabitStreaks && prefs.isDateInVacation(curDate)) {
+                // Neutral day in vacation
+            } else if (completedDateSet.contains(curDate)) {
+                strength += (1.0f - strength) * 0.12f
+            } else {
+                strength *= 0.92f
+            }
+            curDate = curDate.plusDays(1)
+        }
+        val habitStrength = (strength * 100).toInt().coerceIn(0, 100)
+
         return habit.id to HabitStats(
             currentStreak = currentStreak,
             maxStreak = maxStreak,
-            createdAt = habit.createdAt
+            createdAt = habit.createdAt,
+            habitStrength = habitStrength
         )
     }
 
