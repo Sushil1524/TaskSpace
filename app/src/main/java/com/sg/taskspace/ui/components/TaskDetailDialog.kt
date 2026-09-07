@@ -338,6 +338,34 @@ fun TaskDetailDialog(
                             }
                         }
 
+                        // Time Presets
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.horizontalScroll(rememberScrollState())
+                        ) {
+                            val timePresets = listOf(
+                                "09:00 AM" to "Morning 9 AM",
+                                "02:00 PM" to "Afternoon 2 PM",
+                                "06:00 PM" to "Evening 6 PM"
+                            )
+                            timePresets.forEach { (timeVal, label) ->
+                                FilterChip(
+                                    selected = editedTime == timeVal,
+                                    onClick = { editedTime = if (editedTime == timeVal) null else timeVal },
+                                    label = { Text(label, fontSize = 11.sp) },
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                            }
+                            if (editedTime != null) {
+                                FilterChip(
+                                    selected = false,
+                                    onClick = { editedTime = null },
+                                    label = { Text("Clear Time", fontSize = 11.sp) },
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                            }
+                        }
+
                         // Repeat Schedule & Duration Side-by-Side Options
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -372,14 +400,38 @@ fun TaskDetailDialog(
                         }
 
                         // Tags
-                        OutlinedTextField(
-                            value = editedTags,
-                            onValueChange = { editedTags = it },
-                            label = { Text("Tags (comma separated, e.g. #work, #urgent)") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp)
-                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            OutlinedTextField(
+                                value = editedTags,
+                                onValueChange = { editedTags = it },
+                                label = { Text("Tags (comma separated, e.g. #work, #urgent)") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(14.dp)
+                            )
+                            val commonTags = listOf("#urgent", "#work", "#personal", "#study", "#health", "#finance")
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.horizontalScroll(rememberScrollState())
+                            ) {
+                                commonTags.forEach { tag ->
+                                    val hasTag = editedTags.contains(tag, ignoreCase = true)
+                                    FilterChip(
+                                        selected = hasTag,
+                                        onClick = {
+                                            if (hasTag) {
+                                                val clean = editedTags.split(",").map { it.trim() }.filter { !it.equals(tag, ignoreCase = true) && it.isNotBlank() }
+                                                editedTags = clean.joinToString(", ")
+                                            } else {
+                                                editedTags = if (editedTags.isBlank()) tag else "$editedTags, $tag"
+                                            }
+                                        },
+                                        label = { Text(tag, fontSize = 11.sp) },
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                                }
+                            }
+                        }
 
                         // Notes Field
                         OutlinedTextField(

@@ -42,11 +42,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.sg.taskspace.ui.components.DayTimelineView
 import com.sg.taskspace.ui.components.TaskCard
 import com.sg.taskspace.ui.components.WeeklyProgressRow
 import com.sg.taskspace.ui.viewmodel.TaskViewModel
 import java.time.LocalDate
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,6 +65,7 @@ fun HomeScreen(
     onAddTaskClick: () -> Unit
 ) {
     val tasks by viewModel.currentDisplayTasks.collectAsState()
+    val allUniqueTags by viewModel.allUniqueTags.collectAsState(initial = emptyList())
     val projects by (projectViewModel?.projects?.collectAsState() ?: remember { mutableStateOf(emptyList()) })
     val projectsMap = remember(projects) { projects.associateBy { it.id } }
     val formattedDate = viewModel.formattedDate
@@ -74,10 +75,20 @@ fun HomeScreen(
     val weeklyTasks by viewModel.weeklyTasks.collectAsState()
     val userPreferences by viewModel.userPreferences.collectAsState()
 
+    var selectedTag by remember { mutableStateOf("All") }
+    var isTimelineView by remember { mutableStateOf(false) }
     var showFinishedSection by remember { mutableStateOf(true) }
     var selectedTask by remember { mutableStateOf<Task?>(null) }
     var selectedDayForDialog by remember { mutableStateOf<LocalDate?>(null) }
     var showVacationDialog by remember { mutableStateOf(false) }
+
+    val filteredTasks = remember(tasks, selectedTag) {
+        if (selectedTag == "All") tasks
+        else tasks.filter { task ->
+            task.tags.split(",").map { it.trim().removePrefix("#").lowercase() }
+                .contains(selectedTag.removePrefix("#").lowercase())
+        }
+    }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -381,19 +392,121 @@ fun HomeScreen(
                 }
             }
 
-            // Today's Tasks header
+            // Today's Tasks header & View Mode Switcher
             item {
-                Text(
-                    text = "Today's Tasks",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Today's Tasks",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(3.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Surface(
+                                color = if (!isTimelineView) MaterialTheme.colorScheme.surface else Color.Transparent,
+                                shape = RoundedCornerShape(9.dp),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(9.dp))
+                                    .clickable { isTimelineView = false }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.TrendingUp,
+                                        contentDescription = "List View",
+                                        modifier = Modifier.size(16.dp),
+                                        tint = if (!isTimelineView) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = "List",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (!isTimelineView) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            Surface(
+                                color = if (isTimelineView) MaterialTheme.colorScheme.surface else Color.Transparent,
+                                shape = RoundedCornerShape(9.dp),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(9.dp))
+                                    .clickable { isTimelineView = true }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Schedule,
+                                        contentDescription = "Timeline View",
+                                        modifier = Modifier.size(16.dp),
+                                        tint = if (isTimelineView) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = "Timeline",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isTimelineView) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
-            // Active + Finished sections
-            val activeTasks = tasks.filter { !it.isCompleted }
-            val completedTasks = tasks.filter { it.isCompleted }
+            // Tag Filter Chips (Scrollable)
+            item {
+                val tagsFromTasks = tasks.flatMap { t -> t.tags.split(",").map { it.trim().removePrefix("#") }.filter { it.isNotBlank() } }
+                val uniqueTagsInTasks = (allUniqueTags.map { it.removePrefix("#") } + tagsFromTasks).distinct().sorted()
+
+                if (uniqueTagsInTasks.isNotEmpty()) {
+                    androidx.compose.foundation.lazy.LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        item {
+                            FilterChip(
+                                selected = selectedTag == "All",
+                                onClick = { selectedTag = "All" },
+                                label = { Text("All (${tasks.size})") },
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                        }
+                        items(uniqueTagsInTasks.size) { i ->
+                            val tag = uniqueTagsInTasks[i]
+                            val count = tasks.count { t -> t.tags.split(",").map { it.trim().removePrefix("#").lowercase() }.contains(tag.lowercase()) }
+                            FilterChip(
+                                selected = selectedTag.equals(tag, ignoreCase = true),
+                                onClick = { selectedTag = if (selectedTag.equals(tag, ignoreCase = true)) "All" else tag },
+                                label = { Text("#$tag ($count)") },
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Tasks Rendering (Timeline or List View)
+            val activeTasks = filteredTasks.filter { !it.isCompleted }
+            val completedTasks = filteredTasks.filter { it.isCompleted }
 
             if (activeTasks.isEmpty() && completedTasks.isEmpty()) {
                 item {
@@ -409,12 +522,23 @@ fun HomeScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "No tasks for today.\nAdd some tasks to get started!",
+                            text = if (selectedTag != "All") "No tasks with tag #$selectedTag for today."
+                            else "No tasks for today.\nAdd some tasks to get started!",
                             textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                }
+            } else if (isTimelineView) {
+                // Interactive Day Timeline Schedule View
+                item {
+                    DayTimelineView(
+                        tasks = filteredTasks,
+                        projectsMap = projectsMap,
+                        onTaskClick = { selectedTask = it },
+                        onToggleTask = { viewModel.toggleTaskCompletion(it) }
+                    )
                 }
             } else {
                 val swipeRightAction = userPreferences?.swipeRightAction ?: "Complete"

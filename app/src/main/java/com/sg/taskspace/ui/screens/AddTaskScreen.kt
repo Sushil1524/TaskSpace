@@ -6,6 +6,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -52,7 +53,8 @@ fun AddTaskScreen(
     var selectedProjectId by remember { mutableStateOf<String?>(null) }
     var projectDropdownExpanded by remember { mutableStateOf(false) }
 
-    // Reminders
+    // Reminders & Scheduled Time
+    var scheduledTime by remember { mutableStateOf<String?>(null) }
     var setReminder by remember { mutableStateOf(false) }
     var reminderOffsetMinutes by remember { mutableIntStateOf(15) } // Default 15 mins from now
 
@@ -160,7 +162,8 @@ fun AddTaskScreen(
                                     repeat = repeat,
                                     estimatedMinutes = finalMinutes,
                                     tags = selectedTags.joinToString(","),
-                                    projectId = selectedProjectId
+                                    projectId = selectedProjectId,
+                                    time = scheduledTime
                                 )
                                 if (setReminder) {
                                     val triggerTime = System.currentTimeMillis() + (reminderOffsetMinutes * 60 * 1000L)
@@ -303,6 +306,58 @@ fun AddTaskScreen(
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
                         suffix = { Text("min") }
+                    )
+                }
+            }
+
+            // Scheduled Start Time
+            SectionLabel("Scheduled Time")
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.horizontalScroll(rememberScrollState())
+            ) {
+                val timeOptions = listOf(
+                    "09:00 AM" to "Morning 9 AM",
+                    "02:00 PM" to "Afternoon 2 PM",
+                    "06:00 PM" to "Evening 6 PM"
+                )
+                timeOptions.forEach { (timeVal, label) ->
+                    FilterChip(
+                        selected = scheduledTime == timeVal,
+                        onClick = { scheduledTime = if (scheduledTime == timeVal) null else timeVal },
+                        label = { Text(label) }
+                    )
+                }
+
+                // Custom Time Button
+                OutlinedButton(
+                    onClick = {
+                        val calendar = java.util.Calendar.getInstance()
+                        android.app.TimePickerDialog(
+                            context,
+                            { _, hour, minute ->
+                                val isPm = hour >= 12
+                                val h12 = if (hour % 12 == 0) 12 else hour % 12
+                                scheduledTime = String.format("%02d:%02d %s", h12, minute, if (isPm) "PM" else "AM")
+                            },
+                            calendar.get(java.util.Calendar.HOUR_OF_DAY),
+                            calendar.get(java.util.Calendar.MINUTE),
+                            false
+                        ).show()
+                    },
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Icon(Icons.Default.AccessTime, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(scheduledTime ?: "Custom", fontSize = 12.sp)
+                }
+
+                if (scheduledTime != null) {
+                    FilterChip(
+                        selected = false,
+                        onClick = { scheduledTime = null },
+                        label = { Text("Clear") }
                     )
                 }
             }

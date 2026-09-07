@@ -22,8 +22,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import com.sg.taskspace.data.Habit
 import com.sg.taskspace.data.HabitLog
+import com.sg.taskspace.data.Task
 import com.sg.taskspace.ui.theme.PriorityHigh
 import com.sg.taskspace.ui.theme.PriorityLow
 import com.sg.taskspace.ui.theme.PriorityMedium
@@ -31,6 +33,7 @@ import com.sg.taskspace.ui.theme.PrimaryIndigo
 import com.sg.taskspace.ui.theme.SecondaryEmerald
 import com.sg.taskspace.ui.viewmodel.HabitViewModel
 import com.sg.taskspace.ui.viewmodel.TaskViewModel
+import com.sg.taskspace.util.ReportExporter
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -43,10 +46,12 @@ fun InsightsScreen(
     projectViewModel: com.sg.taskspace.ui.viewmodel.ProjectViewModel? = null,
     onNavigateBack: () -> Unit
 ) {
+    val context = LocalContext.current
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
     val insightsData by viewModel.getInsightsData(currentMonth).collectAsState(initial = null)
     val isCurrentMonth = currentMonth == YearMonth.now()
 
+    val allTasks by viewModel.allTasks.collectAsState()
     val habitsState = habitViewModel?.habits?.collectAsState()
     val habits: List<Habit> = habitsState?.value ?: emptyList()
 
@@ -59,6 +64,8 @@ fun InsightsScreen(
     val projectsState = projectViewModel?.projects?.collectAsState()
     val projects = projectsState?.value ?: emptyList()
 
+    var showExportDialog by remember { mutableStateOf(false) }
+
     // Category colors
     val categoryColors = listOf(
         PrimaryIndigo, SecondaryEmerald, PriorityHigh, PriorityMedium, PriorityLow,
@@ -68,10 +75,15 @@ fun InsightsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Insights", fontWeight = FontWeight.Bold) },
+                title = { Text("Insights & Analytics", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showExportDialog = true }) {
+                        Icon(Icons.Default.Share, contentDescription = "Export Report")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
@@ -216,7 +228,7 @@ fun InsightsScreen(
                     )
                     InsightHighlightCard(
                         modifier = Modifier.weight(1f),
-                        label = "🎯 Focus",
+                        label = "🎯 Focus Area",
                         value = data.needsFocus,
                         subtitle = "needs work",
                         iconColor = PriorityHigh,
@@ -226,7 +238,7 @@ fun InsightsScreen(
 
                 // ── Habit Analytics Section ──
                 if (habits.isNotEmpty()) {
-                    InsightSectionHeader("Habit Consistency Analytics", Icons.Default.SelfImprovement)
+                    InsightSectionHeader("Habit Consistency & Strength", Icons.Default.SelfImprovement)
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                         shape = RoundedCornerShape(16.dp)
@@ -241,9 +253,76 @@ fun InsightsScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                TypeBadge(label = "🟢 Build", count = buildCount, color = SecondaryEmerald)
-                                TypeBadge(label = "🛑 Quit", count = quitCount, color = PriorityHigh)
-                                TypeBadge(label = "📊 Target", count = numericCount, color = PrimaryIndigo)
+                                TypeBadge(label = "Build", count = buildCount, color = SecondaryEmerald)
+                                TypeBadge(label = "Quit", count = quitCount, color = PriorityHigh)
+                                TypeBadge(label = "Target", count = numericCount, color = PrimaryIndigo)
+                            }
+
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                            // Habit Strength Breakdown (Rolling 30-Day Consistency)
+                            Text(
+                                text = "Habit Strength (30-Day Consistency)",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            habits.forEach { habit ->
+                                val stat = habitStats[habit.id]
+                                val strength = stat?.habitStrength ?: 0
+                                val streak = stat?.currentStreak ?: 0
+                                val strengthColor = when {
+                                    strength >= 70 -> SecondaryEmerald
+                                    strength >= 40 -> Color(0xFFD97706)
+                                    else -> PriorityHigh
+                                }
+
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = habit.name,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            if (streak > 0) {
+                                                Text(
+                                                    text = "${streak}d streak",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                            Surface(
+                                                color = strengthColor.copy(alpha = 0.15f),
+                                                shape = RoundedCornerShape(6.dp)
+                                            ) {
+                                                Text(
+                                                    text = "$strength% Strength",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                    color = strengthColor,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        }
+                                    }
+                                    LinearProgressIndicator(
+                                        progress = { strength / 100f },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(6.dp)
+                                            .clip(RoundedCornerShape(3.dp)),
+                                        color = strengthColor,
+                                        trackColor = MaterialTheme.colorScheme.surface
+                                    )
+                                }
                             }
 
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
@@ -308,7 +387,7 @@ fun InsightsScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Text("🔥", fontSize = 16.sp)
+                                        Icon(Icons.Default.LocalFireDepartment, contentDescription = null, tint = Color(0xFFD97706), modifier = Modifier.size(18.dp))
                                         Column {
                                             Text("Top Active Streak", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                             Text(topHabit.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
@@ -502,6 +581,65 @@ fun InsightsScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
+    }
+
+    if (showExportDialog) {
+        AlertDialog(
+            onDismissRequest = { showExportDialog = false },
+            icon = { Icon(Icons.Default.Share, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+            title = { Text("Export Summary Report") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Choose your preferred export format to share or save your monthly productivity summary:",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val report = ReportExporter.generateMarkdownReport(
+                            month = currentMonth,
+                            insightsData = insightsData,
+                            tasks = allTasks,
+                            habits = habits,
+                            habitStats = habitStats,
+                            projects = projects
+                        )
+                        ReportExporter.shareReport(
+                            context = context,
+                            content = report,
+                            title = "TaskSpace Report - ${currentMonth.format(DateTimeFormatter.ofPattern("MMM yyyy"))}",
+                            mimeType = "text/markdown"
+                        )
+                        showExportDialog = false
+                    }
+                ) {
+                    Text("Markdown (.md)")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = {
+                        val csv = ReportExporter.generateCsvReport(
+                            tasks = allTasks,
+                            habits = habits,
+                            habitStats = habitStats
+                        )
+                        ReportExporter.shareReport(
+                            context = context,
+                            content = csv,
+                            title = "TaskSpace Data - ${currentMonth.format(DateTimeFormatter.ofPattern("MMM yyyy"))}",
+                            mimeType = "text/csv"
+                        )
+                        showExportDialog = false
+                    }
+                ) {
+                    Text("CSV (.csv)")
+                }
+            }
+        )
     }
 }
 

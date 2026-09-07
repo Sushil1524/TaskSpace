@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -501,6 +502,45 @@ class TaskViewModel(
         }
     }
 
+    val allTasks: StateFlow<List<Task>> = taskRepository.getAllTasks()
+        .map { list -> list.filter { !it.isDeleted } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val allUniqueTags: Flow<List<String>> = allTasks.map { tasks ->
+        tasks.flatMap { it.tags.split(",") }
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .sorted()
+    }
+
+    private fun scheduleTaskReminderIfNeeded(task: Task) {
+        if (task.time.isNullOrBlank() || task.isCompleted || task.isDeleted) {
+            com.sg.taskspace.util.NotificationHelper.cancelReminder(TaskSpaceApplication.instance, task.id)
+            return
+        }
+        try {
+            val taskDate = LocalDate.parse(task.createdForDate, DateTimeFormatter.ISO_DATE)
+            val taskTime = java.time.LocalTime.parse(task.time, DateTimeFormatter.ofPattern("HH:mm"))
+            val triggerMillis = java.time.LocalDateTime.of(taskDate, taskTime)
+                .atZone(java.time.ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
+
+            if (triggerMillis > System.currentTimeMillis()) {
+                com.sg.taskspace.util.NotificationHelper.scheduleReminder(
+                    context = TaskSpaceApplication.instance,
+                    id = task.id,
+                    title = "Task Reminder: ${task.title}",
+                    notes = task.notes ?: "Scheduled for ${task.time}",
+                    triggerAtMillis = triggerMillis
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     fun addTask(
         title: String,
         notes: String,
@@ -528,6 +568,7 @@ class TaskViewModel(
                 time = time
             )
             taskRepository.insertTask(task)
+            scheduleTaskReminderIfNeeded(task)
         }
     }
     
@@ -552,8 +593,11 @@ class TaskViewModel(
                 taskRepository.insertTask(completedInstance)
             } else if (task.parentId != null && task.isCompleted) {
                 taskRepository.deleteTask(task)
+                com.sg.taskspace.util.NotificationHelper.cancelReminder(TaskSpaceApplication.instance, task.id)
             } else {
-                taskRepository.updateTask(task.copy(isCompleted = !task.isCompleted))
+                val updated = task.copy(isCompleted = !task.isCompleted)
+                taskRepository.updateTask(updated)
+                scheduleTaskReminderIfNeeded(updated)
             }
         }
     }
@@ -579,6 +623,7 @@ class TaskViewModel(
     fun deleteTask(task: Task) {
         viewModelScope.launch {
             taskRepository.softDeleteTask(task.id)
+            com.sg.taskspace.util.NotificationHelper.cancelReminder(TaskSpaceApplication.instance, task.id)
         }
     }
 
@@ -591,6 +636,7 @@ class TaskViewModel(
     fun updateTaskDetails(task: Task) {
         viewModelScope.launch {
             taskRepository.updateTask(task)
+            scheduleTaskReminderIfNeeded(task)
         }
     }
 
