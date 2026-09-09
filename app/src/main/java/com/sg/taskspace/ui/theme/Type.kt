@@ -1,16 +1,38 @@
 package com.sg.taskspace.ui.theme
 
+import android.graphics.Typeface
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.sg.taskspace.R
+
+// Bundled 100% offline open-source fonts
+val interFontFamily = FontFamily(
+    Font(R.font.inter_regular, FontWeight.Normal),
+    Font(R.font.inter_medium, FontWeight.Medium),
+    Font(R.font.inter_medium, FontWeight.SemiBold),
+    Font(R.font.inter_bold, FontWeight.Bold)
+)
+
+val outfitFontFamily = FontFamily(
+    Font(R.font.outfit_regular, FontWeight.Normal),
+    Font(R.font.outfit_medium, FontWeight.Medium),
+    Font(R.font.outfit_medium, FontWeight.SemiBold),
+    Font(R.font.outfit_bold, FontWeight.Bold)
+)
+
+val condensedFontFamily = FontFamily(Typeface.create("sans-serif-condensed", Typeface.NORMAL))
 
 fun getFontFamily(name: String): FontFamily {
     return when (name) {
+        "Inter" -> interFontFamily
+        "Outfit", "Rounded" -> outfitFontFamily
+        "Condensed" -> condensedFontFamily
         "Serif" -> FontFamily.Serif
         "Monospace" -> FontFamily.Monospace
-        "Rounded" -> FontFamily.Cursive
         else -> FontFamily.Default
     }
 }

@@ -20,10 +20,12 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.provider.Settings
@@ -182,26 +184,51 @@ fun SettingsScreen(
 
     // Font Picker Dialog
     if (showFontDialog) {
-        val fonts = listOf("Default", "Rounded", "Serif", "Monospace")
+        val fontOptions = listOf(
+            Triple("Default", "System default clean font", com.sg.taskspace.ui.theme.getFontFamily("Default")),
+            Triple("Inter", "Bundled: modern, crisp & ultra-legible", com.sg.taskspace.ui.theme.getFontFamily("Inter")),
+            Triple("Outfit", "Bundled: smooth geometric rounded sans", com.sg.taskspace.ui.theme.getFontFamily("Outfit")),
+            Triple("Condensed", "Built-in: compact, sleek modern sans", com.sg.taskspace.ui.theme.getFontFamily("Condensed")),
+            Triple("Serif", "Built-in: classic, refined editorial look", com.sg.taskspace.ui.theme.getFontFamily("Serif")),
+            Triple("Monospace", "Built-in: clean developer & code style", com.sg.taskspace.ui.theme.getFontFamily("Monospace"))
+        )
         AlertDialog(
             onDismissRequest = { showFontDialog = false },
-            title = { Text("Choose Font", fontWeight = FontWeight.Bold) },
+            title = { Text("Choose Font Family", fontWeight = FontWeight.Bold) },
             text = {
-                Column {
-                    fonts.forEach { font ->
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    fontOptions.forEach { (fontKey, subtitle, family) ->
+                        val isSelected = currentFont == fontKey
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
                                 .clickable {
-                                    viewModel.saveFontFamily(font)
+                                    viewModel.saveFontFamily(fontKey)
                                     showFontDialog = false
                                 }
-                                .padding(vertical = 12.dp),
+                                .padding(horizontal = 8.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(font, style = MaterialTheme.typography.bodyLarge)
-                            if (currentFont == font) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = fontKey,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontFamily = family,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                )
+                                Text(
+                                    text = subtitle,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 11.sp
+                                )
+                            }
+                            if (isSelected) {
                                 Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             }
                         }
