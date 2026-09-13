@@ -193,24 +193,28 @@ class HabitViewModel(
     fun addHabit(habit: Habit) {
         viewModelScope.launch {
             habitRepository.insertHabit(habit)
+            com.sg.taskspace.util.NotificationHelper.updateDailyDashboardNotification(com.sg.taskspace.TaskSpaceApplication.instance)
         }
     }
 
     fun updateHabit(habit: Habit) {
         viewModelScope.launch {
             habitRepository.insertHabit(habit)
+            com.sg.taskspace.util.NotificationHelper.updateDailyDashboardNotification(com.sg.taskspace.TaskSpaceApplication.instance)
         }
     }
 
     fun deleteHabit(habit: Habit) {
         viewModelScope.launch {
             habitRepository.softDeleteHabit(habit.id)
+            com.sg.taskspace.util.NotificationHelper.updateDailyDashboardNotification(com.sg.taskspace.TaskSpaceApplication.instance)
         }
     }
 
     fun restoreHabit(habitId: String) {
         viewModelScope.launch {
             habitRepository.restoreHabit(habitId)
+            com.sg.taskspace.util.NotificationHelper.updateDailyDashboardNotification(com.sg.taskspace.TaskSpaceApplication.instance)
         }
     }
 
@@ -237,6 +241,7 @@ class HabitViewModel(
                     )
                 )
             }
+            com.sg.taskspace.util.NotificationHelper.updateDailyDashboardNotification(com.sg.taskspace.TaskSpaceApplication.instance)
         }
     }
 
@@ -262,6 +267,7 @@ class HabitViewModel(
                     )
                 )
             }
+            com.sg.taskspace.util.NotificationHelper.updateDailyDashboardNotification(com.sg.taskspace.TaskSpaceApplication.instance)
         }
     }
 
@@ -285,6 +291,7 @@ class HabitViewModel(
                     )
                 )
             }
+            com.sg.taskspace.util.NotificationHelper.updateDailyDashboardNotification(com.sg.taskspace.TaskSpaceApplication.instance)
         }
     }
 

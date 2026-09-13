@@ -30,12 +30,16 @@ class MainActivity : AppCompatActivity() {
     /** Maps safe 16-bit code → original 32-bit code sent by ActivityResultRegistry */
     private val requestCodeMap = HashMap<Int, Int>()
 
+    private val navigateToRoute = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         window.decorView.setBackgroundColor(android.graphics.Color.BLACK)
 
         com.sg.taskspace.util.NotificationHelper.createNotificationChannel(this)
+        com.sg.taskspace.util.NotificationHelper.updateDailyDashboardNotification(this)
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -43,10 +47,12 @@ class MainActivity : AppCompatActivity() {
         }
 
         taskViewModel.checkAndApplyAppLockOnForeground()
+        handleIntent(intent)
 
         setContent {
             val userPreferences by taskViewModel.userPreferences.collectAsState()
             val isAppLocked by taskViewModel.isAppLocked.collectAsState()
+            val targetRoute by navigateToRoute.collectAsState()
 
             val themeMode = userPreferences?.themeMode ?: "AMOLED Dark"
             val fontFamily = userPreferences?.fontFamily ?: "Default"
@@ -60,9 +66,27 @@ class MainActivity : AppCompatActivity() {
                         onUnlockSuccess = { taskViewModel.unlockApp() }
                     )
                 } else {
-                    TaskSpaceNavGraph(taskViewModel = taskViewModel)
+                    TaskSpaceNavGraph(
+                        taskViewModel = taskViewModel,
+                        initialNavigateTo = targetRoute,
+                        onNavigated = { navigateToRoute.value = null }
+                    )
                 }
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        val navTarget = intent?.getStringExtra("EXTRA_NAVIGATE_TO")
+            ?: if (intent?.action == com.sg.taskspace.util.NotificationHelper.ACTION_ADD_TASK) "add_task" else null
+        if (!navTarget.isNullOrBlank()) {
+            navigateToRoute.value = navTarget
         }
     }
 

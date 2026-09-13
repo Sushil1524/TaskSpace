@@ -130,6 +130,22 @@ class TaskViewModel(
     fun saveNotificationsEnabled(enabled: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.updateNotificationsEnabled(enabled)
+            if (enabled) {
+                com.sg.taskspace.util.NotificationHelper.updateDailyDashboardNotification(TaskSpaceApplication.instance)
+            } else {
+                com.sg.taskspace.util.NotificationHelper.cancelDailyDashboardNotification(TaskSpaceApplication.instance)
+            }
+        }
+    }
+
+    fun savePersistentDailyDashboardEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.updatePersistentDailyDashboardEnabled(enabled)
+            if (enabled) {
+                com.sg.taskspace.util.NotificationHelper.updateDailyDashboardNotification(TaskSpaceApplication.instance)
+            } else {
+                com.sg.taskspace.util.NotificationHelper.cancelDailyDashboardNotification(TaskSpaceApplication.instance)
+            }
         }
     }
 
@@ -569,6 +585,7 @@ class TaskViewModel(
             )
             taskRepository.insertTask(task)
             scheduleTaskReminderIfNeeded(task)
+            com.sg.taskspace.util.NotificationHelper.updateDailyDashboardNotification(TaskSpaceApplication.instance)
         }
     }
     
@@ -599,6 +616,7 @@ class TaskViewModel(
                 taskRepository.updateTask(updated)
                 scheduleTaskReminderIfNeeded(updated)
             }
+            com.sg.taskspace.util.NotificationHelper.updateDailyDashboardNotification(TaskSpaceApplication.instance)
         }
     }
 
@@ -624,12 +642,14 @@ class TaskViewModel(
         viewModelScope.launch {
             taskRepository.softDeleteTask(task.id)
             com.sg.taskspace.util.NotificationHelper.cancelReminder(TaskSpaceApplication.instance, task.id)
+            com.sg.taskspace.util.NotificationHelper.updateDailyDashboardNotification(TaskSpaceApplication.instance)
         }
     }
 
     fun restoreTask(taskId: String) {
         viewModelScope.launch {
             taskRepository.restoreTask(taskId)
+            com.sg.taskspace.util.NotificationHelper.updateDailyDashboardNotification(TaskSpaceApplication.instance)
         }
     }
 
@@ -637,6 +657,7 @@ class TaskViewModel(
         viewModelScope.launch {
             taskRepository.updateTask(task)
             scheduleTaskReminderIfNeeded(task)
+            com.sg.taskspace.util.NotificationHelper.updateDailyDashboardNotification(TaskSpaceApplication.instance)
         }
     }
 

@@ -44,7 +44,9 @@ import com.sg.taskspace.ui.screens.TrashScreen
 fun TaskSpaceNavGraph(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
-    taskViewModel: TaskViewModel = viewModel(factory = TaskViewModel.Factory)
+    taskViewModel: TaskViewModel = viewModel(factory = TaskViewModel.Factory),
+    initialNavigateTo: String? = null,
+    onNavigated: () -> Unit = {}
 ) {
     val achievementsViewModel: AchievementsViewModel = viewModel(factory = AchievementsViewModel.Factory)
     val habitViewModel: HabitViewModel = viewModel(factory = HabitViewModel.Factory)
@@ -54,7 +56,6 @@ fun TaskSpaceNavGraph(
 
     val userPreferences by taskViewModel.userPreferences.collectAsState()
     val currentPrefs = userPreferences
-
     if (currentPrefs == null) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -81,6 +82,14 @@ fun TaskSpaceNavGraph(
                 )
             }
             composable("home") {
+                androidx.compose.runtime.LaunchedEffect(initialNavigateTo) {
+                    if (!initialNavigateTo.isNullOrBlank()) {
+                        navController.navigate(initialNavigateTo) {
+                            launchSingleTop = true
+                        }
+                        onNavigated()
+                    }
+                }
                 HomeScreen(
                     viewModel = taskViewModel,
                     projectViewModel = projectViewModel,

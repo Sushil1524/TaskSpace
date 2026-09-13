@@ -34,6 +34,7 @@ class UserPreferencesRepository(private val context: Context) {
         val LAST_AUTO_BACKUP_TIME = longPreferencesKey("last_auto_backup_time")
         // Notifications & Feedback
         val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
+        val PERSISTENT_DAILY_DASHBOARD_ENABLED = booleanPreferencesKey("persistent_daily_dashboard_enabled")
         val SOUND_EFFECTS_ENABLED = booleanPreferencesKey("sound_effects_enabled")
         // Gestures & Swipe Actions
         val SWIPE_RIGHT_ACTION = stringPreferencesKey("swipe_right_action") // "Complete", "Snooze", "Edit", "Delete", "None"
@@ -73,6 +74,7 @@ class UserPreferencesRepository(private val context: Context) {
             val autoBackupFrequency = preferences[PreferencesKeys.AUTO_BACKUP_FREQUENCY] ?: "Daily"
             val lastAutoBackupTimeMillis = preferences[PreferencesKeys.LAST_AUTO_BACKUP_TIME] ?: 0L
             val notificationsEnabled = preferences[PreferencesKeys.NOTIFICATIONS_ENABLED] ?: false
+            val persistentDailyDashboardEnabled = preferences[PreferencesKeys.PERSISTENT_DAILY_DASHBOARD_ENABLED] ?: false
             val soundEffectsEnabled = preferences[PreferencesKeys.SOUND_EFFECTS_ENABLED] ?: true
             val swipeRightAction = preferences[PreferencesKeys.SWIPE_RIGHT_ACTION] ?: "Complete"
             val swipeLeftAction = preferences[PreferencesKeys.SWIPE_LEFT_ACTION] ?: "Delete"
@@ -99,6 +101,7 @@ class UserPreferencesRepository(private val context: Context) {
                 autoBackupFrequency = autoBackupFrequency,
                 lastAutoBackupTimeMillis = lastAutoBackupTimeMillis,
                 notificationsEnabled = notificationsEnabled,
+                persistentDailyDashboardEnabled = persistentDailyDashboardEnabled,
                 soundEffectsEnabled = soundEffectsEnabled,
                 swipeRightAction = swipeRightAction,
                 swipeLeftAction = swipeLeftAction,
@@ -168,6 +171,12 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun updateNotificationsEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.NOTIFICATIONS_ENABLED] = enabled
+        }
+    }
+
+    suspend fun updatePersistentDailyDashboardEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.PERSISTENT_DAILY_DASHBOARD_ENABLED] = enabled
         }
     }
 
@@ -266,6 +275,7 @@ class UserPreferencesRepository(private val context: Context) {
         isSecureBackupEnabled: Boolean = true,
         autoBackupFrequency: String = "Daily",
         notificationsEnabled: Boolean = false,
+        persistentDailyDashboardEnabled: Boolean = false,
         soundEffectsEnabled: Boolean = true,
         swipeRightAction: String = "Complete",
         swipeLeftAction: String = "Delete",
@@ -284,6 +294,7 @@ class UserPreferencesRepository(private val context: Context) {
             preferences[PreferencesKeys.IS_SECURE_BACKUP_ENABLED] = isSecureBackupEnabled
             preferences[PreferencesKeys.AUTO_BACKUP_FREQUENCY] = autoBackupFrequency
             preferences[PreferencesKeys.NOTIFICATIONS_ENABLED] = notificationsEnabled
+            preferences[PreferencesKeys.PERSISTENT_DAILY_DASHBOARD_ENABLED] = persistentDailyDashboardEnabled
             preferences[PreferencesKeys.SOUND_EFFECTS_ENABLED] = soundEffectsEnabled
             preferences[PreferencesKeys.SWIPE_RIGHT_ACTION] = swipeRightAction
             preferences[PreferencesKeys.SWIPE_LEFT_ACTION] = swipeLeftAction
@@ -306,6 +317,7 @@ data class UserPreferences(
     @SerializedName("autoBackupFrequency") val autoBackupFrequency: String = "Daily",
     @SerializedName("lastAutoBackupTimeMillis") val lastAutoBackupTimeMillis: Long = 0L,
     @SerializedName("notificationsEnabled") val notificationsEnabled: Boolean = false,
+    @SerializedName("persistentDailyDashboardEnabled") val persistentDailyDashboardEnabled: Boolean = false,
     @SerializedName("soundEffectsEnabled") val soundEffectsEnabled: Boolean = true,
     @SerializedName("swipeRightAction") val swipeRightAction: String = "Complete",
     @SerializedName("swipeLeftAction") val swipeLeftAction: String = "Delete",

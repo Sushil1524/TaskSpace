@@ -517,6 +517,7 @@ class DataTransferManager(
                             isSecureBackupEnabled = prefs.isSecureBackupEnabled,
                             autoBackupFrequency = prefs.autoBackupFrequency,
                             notificationsEnabled = prefs.notificationsEnabled,
+                            persistentDailyDashboardEnabled = prefs.persistentDailyDashboardEnabled,
                             soundEffectsEnabled = prefs.soundEffectsEnabled,
                             swipeRightAction = prefs.swipeRightAction,
                             swipeLeftAction = prefs.swipeLeftAction,

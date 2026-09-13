@@ -46,6 +46,7 @@ class BootReceiver : BroadcastReceiver() {
                             e.printStackTrace()
                         }
                     }
+                    NotificationHelper.updateDailyDashboardNotification(context)
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
