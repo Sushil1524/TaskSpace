@@ -131,7 +131,7 @@ fun TrashScreen(
             }
 
             // Category Filter Scrollable Tabs
-            ScrollableTabRow(
+            PrimaryScrollableTabRow(
                 selectedTabIndex = categories.indexOf(selectedCategory).coerceAtLeast(0),
                 edgePadding = 16.dp,
                 divider = {},

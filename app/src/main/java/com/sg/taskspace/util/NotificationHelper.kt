@@ -24,6 +24,37 @@ import java.time.format.DateTimeFormatter
 
 class NotificationReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        val extraType = intent.getStringExtra("EXTRA_TYPE")
+        if (extraType == "DAILY_EVENING_SUMMARY") {
+            val app = context.applicationContext as? TaskSpaceApplication ?: return
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val prefs = app.container.userPreferencesRepository.userPreferencesFlow.first()
+                    if (prefs.notificationsEnabled && !prefs.pauseTaskReminders) {
+                        val todayIso = LocalDate.now().format(DateTimeFormatter.ISO_DATE)
+                        val allTasks = app.container.taskRepository.getAllTasksSync()
+                        val incompleteTasks = allTasks.filter { it.createdForDate == todayIso && !it.isCompleted && !it.isDeleted }
+                        if (incompleteTasks.isNotEmpty()) {
+                            val count = incompleteTasks.size
+                            val preview = incompleteTasks.take(2).joinToString(", ") { it.title }
+                            val body = if (count <= 2) "Remaining: $preview" else "Remaining: $preview and ${count - 2} more"
+                            NotificationHelper.showNotification(
+                                context = context,
+                                notificationId = 8888,
+                                title = "Your tasks are incomplete for today",
+                                content = body
+                            )
+                        }
+                    }
+                    // Reschedule for next day 8:00 PM
+                    NotificationHelper.scheduleDailyEveningReminder(context)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+            return
+        }
+
         val reminderId = intent.getStringExtra("EXTRA_ID") ?: return
         val title = intent.getStringExtra("EXTRA_TITLE") ?: "TaskSpace Reminder"
         val notes = intent.getStringExtra("EXTRA_NOTES") ?: "You have a scheduled reminder pending."
@@ -130,8 +161,10 @@ object NotificationHelper {
                 val totalTasksCount = todayTasks.size
                 val completedTasksCount = completedTasks.size
 
-                val allHabits = app.container.habitRepository.getAllHabitsSync().filter { !it.isDeleted }
-                val allHabitLogs = app.container.habitRepository.getAllHabitLogsSync().filter { it.date == todayIso && it.isCompleted }
+                val allHabits = app.container.habitRepository.getAllHabitsSync()
+                    .filter { !it.isDeleted && !it.type.equals("QUIT", ignoreCase = true) }
+                val allHabitLogs = app.container.habitRepository.getAllHabitLogsSync()
+                    .filter { it.date == todayIso && it.isCompleted }
                 val completedHabitIds = allHabitLogs.map { it.habitId }.toSet()
                 val pendingHabits = allHabits.filter { it.id !in completedHabitIds }
                 val completedHabitsCount = allHabits.size - pendingHabits.size
@@ -335,6 +368,36 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         alarmManager.cancel(pendingIntent)
+    }
+
+    fun scheduleDailyEveningReminder(context: Context) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+        val intent = Intent(context, NotificationReceiver::class.java).apply {
+            putExtra("EXTRA_TYPE", "DAILY_EVENING_SUMMARY")
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            8888,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val now = java.time.LocalDateTime.now()
+        var targetTime = now.withHour(20).withMinute(0).withSecond(0).withNano(0)
+        if (!targetTime.isAfter(now)) {
+            targetTime = targetTime.plusDays(1)
+        }
+        val triggerAtMillis = targetTime.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+            } else {
+                alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 }
 

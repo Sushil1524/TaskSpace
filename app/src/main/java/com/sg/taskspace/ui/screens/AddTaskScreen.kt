@@ -153,7 +153,11 @@ fun AddTaskScreen(
                         onClick = {
                             if (title.isNotBlank()) {
                                 val finalMinutes = if (showCustomTime) customMinutes.toIntOrNull() ?: estimatedMinutes else estimatedMinutes
-                                val taskId = java.util.UUID.randomUUID().toString()
+                                val effectiveTime = scheduledTime ?: if (setReminder) {
+                                    java.time.LocalTime.now().plusMinutes(reminderOffsetMinutes.toLong())
+                                        .format(java.time.format.DateTimeFormatter.ofPattern("hh:mm a", java.util.Locale.US))
+                                } else null
+
                                 viewModel.addTask(
                                     title = title,
                                     notes = notes,
@@ -163,18 +167,8 @@ fun AddTaskScreen(
                                     estimatedMinutes = finalMinutes,
                                     tags = selectedTags.joinToString(","),
                                     projectId = selectedProjectId,
-                                    time = scheduledTime
+                                    time = effectiveTime
                                 )
-                                if (setReminder) {
-                                    val triggerTime = System.currentTimeMillis() + (reminderOffsetMinutes * 60 * 1000L)
-                                    NotificationHelper.scheduleReminder(
-                                        context = context,
-                                        id = taskId,
-                                        title = "Task Reminder: $title",
-                                        notes = notes.ifBlank { "Priority: $priority" },
-                                        triggerAtMillis = triggerTime
-                                    )
-                                }
                                 onNavigateBack()
                             }
                         },
@@ -444,7 +438,11 @@ fun AddTaskScreen(
                 onClick = {
                     if (title.isNotBlank()) {
                         val finalMinutes = if (showCustomTime) customMinutes.toIntOrNull() ?: estimatedMinutes else estimatedMinutes
-                        val taskId = java.util.UUID.randomUUID().toString()
+                        val effectiveTime = scheduledTime ?: if (setReminder) {
+                            java.time.LocalTime.now().plusMinutes(reminderOffsetMinutes.toLong())
+                                .format(java.time.format.DateTimeFormatter.ofPattern("hh:mm a", java.util.Locale.US))
+                        } else null
+
                         viewModel.addTask(
                             title = title,
                             notes = notes,
@@ -453,18 +451,9 @@ fun AddTaskScreen(
                             repeat = repeat,
                             estimatedMinutes = finalMinutes,
                             tags = selectedTags.joinToString(","),
-                            projectId = selectedProjectId
+                            projectId = selectedProjectId,
+                            time = effectiveTime
                         )
-                        if (setReminder) {
-                            val triggerTime = System.currentTimeMillis() + (reminderOffsetMinutes * 60 * 1000L)
-                            NotificationHelper.scheduleReminder(
-                                context = context,
-                                id = taskId,
-                                title = "Task Reminder: $title",
-                                notes = notes.ifBlank { "Priority: $priority" },
-                                triggerAtMillis = triggerTime
-                            )
-                        }
                         onNavigateBack()
                     }
                 },

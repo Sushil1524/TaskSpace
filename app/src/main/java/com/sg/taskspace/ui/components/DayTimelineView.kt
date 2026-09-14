@@ -38,7 +38,7 @@ fun DayTimelineView(
 ) {
     val timedTasks = remember(tasks) {
         tasks.filter { !it.time.isNullOrBlank() }
-            .sortedBy { it.time }
+            .sortedBy { com.sg.taskspace.util.DateTimeUtils.timeToMinutes(it.time) }
     }
 
     val anytimeTasks = remember(tasks) {

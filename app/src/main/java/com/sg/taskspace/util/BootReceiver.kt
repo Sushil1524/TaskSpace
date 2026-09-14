@@ -27,7 +27,7 @@ class BootReceiver : BroadcastReceiver() {
                     allTasks.filter { !it.isCompleted && !it.isDeleted && !it.time.isNullOrBlank() }.forEach { task ->
                         try {
                             val taskDate = LocalDate.parse(task.createdForDate, DateTimeFormatter.ISO_DATE)
-                            val taskTime = LocalTime.parse(task.time, DateTimeFormatter.ofPattern("HH:mm"))
+                            val taskTime = DateTimeUtils.parseLocalTime(task.time) ?: return@forEach
                             val triggerMillis = LocalDateTime.of(taskDate, taskTime)
                                 .atZone(ZoneId.systemDefault())
                                 .toInstant()
@@ -47,6 +47,7 @@ class BootReceiver : BroadcastReceiver() {
                         }
                     }
                     NotificationHelper.updateDailyDashboardNotification(context)
+                    NotificationHelper.scheduleDailyEveningReminder(context)
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }

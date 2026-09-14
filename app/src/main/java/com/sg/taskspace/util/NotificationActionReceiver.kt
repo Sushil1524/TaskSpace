@@ -69,9 +69,9 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
                         val targetHabit = if (!habitId.isNullOrBlank()) {
                             val habits = habitRepo.getAllHabitsSync()
-                            habits.firstOrNull { it.id == habitId && !it.isDeleted }
+                            habits.firstOrNull { it.id == habitId && !it.isDeleted && !it.type.equals("QUIT", ignoreCase = true) }
                         } else {
-                            val habits = habitRepo.getAllHabitsSync().filter { !it.isDeleted }
+                            val habits = habitRepo.getAllHabitsSync().filter { !it.isDeleted && !it.type.equals("QUIT", ignoreCase = true) }
                             val todayLogs = habitRepo.getAllHabitLogsSync().filter { it.date == todayIso && it.isCompleted }
                             val completedIds = todayLogs.map { it.habitId }.toSet()
                             habits.firstOrNull { it.id !in completedIds }

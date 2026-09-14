@@ -132,6 +132,7 @@ class TaskViewModel(
             userPreferencesRepository.updateNotificationsEnabled(enabled)
             if (enabled) {
                 com.sg.taskspace.util.NotificationHelper.updateDailyDashboardNotification(TaskSpaceApplication.instance)
+                com.sg.taskspace.util.NotificationHelper.scheduleDailyEveningReminder(TaskSpaceApplication.instance)
             } else {
                 com.sg.taskspace.util.NotificationHelper.cancelDailyDashboardNotification(TaskSpaceApplication.instance)
             }
@@ -537,7 +538,7 @@ class TaskViewModel(
         }
         try {
             val taskDate = LocalDate.parse(task.createdForDate, DateTimeFormatter.ISO_DATE)
-            val taskTime = java.time.LocalTime.parse(task.time, DateTimeFormatter.ofPattern("HH:mm"))
+            val taskTime = com.sg.taskspace.util.DateTimeUtils.parseLocalTime(task.time) ?: return
             val triggerMillis = java.time.LocalDateTime.of(taskDate, taskTime)
                 .atZone(java.time.ZoneId.systemDefault())
                 .toInstant()

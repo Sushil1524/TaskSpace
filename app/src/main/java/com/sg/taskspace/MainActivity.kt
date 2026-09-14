@@ -39,6 +39,7 @@ class MainActivity : AppCompatActivity() {
 
         com.sg.taskspace.util.NotificationHelper.createNotificationChannel(this)
         com.sg.taskspace.util.NotificationHelper.updateDailyDashboardNotification(this)
+        com.sg.taskspace.util.NotificationHelper.scheduleDailyEveningReminder(this)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
