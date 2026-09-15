@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '17'
           distribution: 'temurin'
@@ -67,7 +67,7 @@ jobs:
         with:
           name: TaskSpace-release
           path: app/build/outputs/apk/release/TaskSpace-release.apk
-          retention-days: 30
+          retention-days: 7
 
       # - name: Create GitHub Release
       #   if: startsWith(github.ref, 'refs/tags/')
