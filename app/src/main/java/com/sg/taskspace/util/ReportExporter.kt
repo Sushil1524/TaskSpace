@@ -11,6 +11,9 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 
+import com.sg.taskspace.data.JournalEntry
+import com.sg.taskspace.ui.viewmodel.JournalViewModel
+
 object ReportExporter {
 
     fun generateMarkdownReport(
@@ -19,7 +22,9 @@ object ReportExporter {
         tasks: List<Task>,
         habits: List<Habit>,
         habitStats: Map<String, HabitViewModel.HabitStats>,
-        projects: List<Project>
+        projects: List<Project>,
+        journalEntries: List<JournalEntry> = emptyList(),
+        journalStats: JournalViewModel.JournalStats? = null
     ): String {
         val monthTitle = month.format(DateTimeFormatter.ofPattern("MMMM yyyy"))
         val builder = StringBuilder()
@@ -90,6 +95,28 @@ object ReportExporter {
             builder.appendLine()
         }
 
+        // 5. Journal & Mindfulness Overview
+        if (journalStats != null && journalStats.totalEntriesThisMonth > 0) {
+            builder.appendLine("## Journal & Mood Reflection")
+            builder.appendLine("- Total Journal Entries: ${journalStats.totalEntriesThisMonth}")
+            builder.appendLine("- Total Words Written: ${journalStats.totalWordsThisMonth}")
+            builder.appendLine("- Average Words / Entry: ${journalStats.avgWordsPerEntry}")
+            builder.appendLine("- Journaling Streak: ${journalStats.currentStreak} days")
+            builder.appendLine("- Dominant Mood: ${journalStats.dominantMoodEmoji} ${journalStats.dominantMood}")
+            if (journalStats.avgMoodScore > 0f) {
+                builder.appendLine("- Average Mood Score: ${String.format(java.util.Locale.US, "%.1f", journalStats.avgMoodScore)} / 5.0")
+            }
+            if (journalStats.moodDistribution.isNotEmpty()) {
+                builder.appendLine()
+                builder.appendLine("| Mood | Count |")
+                builder.appendLine("| --- | --- |")
+                journalStats.moodDistribution.filter { it.value > 0 }.forEach { (mood, count) ->
+                    builder.appendLine("| $mood | $count |")
+                }
+            }
+            builder.appendLine()
+        }
+
         builder.appendLine("---")
         builder.appendLine("*Report exported from TaskSpace*")
 
@@ -99,7 +126,8 @@ object ReportExporter {
     fun generateCsvReport(
         tasks: List<Task>,
         habits: List<Habit>,
-        habitStats: Map<String, HabitViewModel.HabitStats>
+        habitStats: Map<String, HabitViewModel.HabitStats>,
+        journalEntries: List<JournalEntry> = emptyList()
     ): String {
         val builder = StringBuilder()
 
@@ -121,6 +149,17 @@ object ReportExporter {
             val maxStreak = stat?.maxStreak ?: 0
             val strength = stat?.habitStrength ?: 0
             builder.appendLine("\"$cleanName\",${habit.type},${habit.scheduleType},$streak,$maxStreak,$strength")
+        }
+
+        if (journalEntries.isNotEmpty()) {
+            builder.appendLine()
+            builder.appendLine("=== JOURNAL ENTRIES ===")
+            builder.appendLine("Date,Mood,WordCount,ContentPreview")
+            journalEntries.filter { !it.isDeleted }.forEach { entry ->
+                val words = if (entry.content.isBlank()) 0 else entry.content.trim().split("\\s+".toRegex()).size
+                val cleanContent = entry.content.replace("\"", "\"\"").replace("\n", " ").take(100)
+                builder.appendLine("\"${entry.date}\",\"${entry.mood}\",$words,\"$cleanContent\"")
+            }
         }
 
         return builder.toString()

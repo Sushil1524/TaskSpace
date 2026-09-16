@@ -395,6 +395,8 @@ fun TaskSpaceNavGraph(
                     viewModel = taskViewModel,
                     habitViewModel = habitViewModel,
                     projectViewModel = projectViewModel,
+                    journalViewModel = journalViewModel,
+                    onNavigateToJournal = { navController.navigate("journal") },
                     onNavigateBack = { 
                         if (navController.previousBackStackEntry != null) {
                             navController.popBackStack()

@@ -44,6 +44,8 @@ fun InsightsScreen(
     viewModel: TaskViewModel,
     habitViewModel: HabitViewModel? = null,
     projectViewModel: com.sg.taskspace.ui.viewmodel.ProjectViewModel? = null,
+    journalViewModel: com.sg.taskspace.ui.viewmodel.JournalViewModel? = null,
+    onNavigateToJournal: () -> Unit = {},
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -63,6 +65,12 @@ fun InsightsScreen(
 
     val projectsState = projectViewModel?.projects?.collectAsState()
     val projects = projectsState?.value ?: emptyList()
+
+    val journalEntriesState = journalViewModel?.allEntries?.collectAsState()
+    val allJournalEntries = journalEntriesState?.value ?: emptyList()
+    val journalStats = remember(currentMonth, allJournalEntries) {
+        journalViewModel?.computeJournalStats(currentMonth, allJournalEntries)
+    }
 
     var showExportDialog by remember { mutableStateOf(false) }
 
@@ -236,6 +244,123 @@ fun InsightsScreen(
                     )
                 }
 
+                // ── Today's Reflection Status / Smart Suggestion Banner ──
+                if (journalStats != null) {
+                    if (!journalStats.hasJournaledToday) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    modifier = Modifier.weight(1f),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                        shape = CircleShape,
+                                        modifier = Modifier.size(42.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                Icons.Default.EditNote,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
+                                    }
+                                    Column {
+                                        Text(
+                                            text = "Today's Reflection Needed",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "You haven't logged your mood or journal today. Take 2 minutes to reflect!",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Button(
+                                    onClick = onNavigateToJournal,
+                                    shape = RoundedCornerShape(10.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                ) {
+                                    Text("Write", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    } else {
+                        val todayEntry = journalStats.todayEntry
+                        val todayEmoji = when (todayEntry?.mood?.lowercase()) {
+                            "great" -> "🤩"
+                            "good", "happy" -> "😊"
+                            "neutral", "calm" -> "😐"
+                            "bad", "sad" -> "😔"
+                            "awful", "anxious", "angry" -> "😫"
+                            else -> "✨"
+                        }
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = SecondaryEmerald.copy(alpha = 0.1f)),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    modifier = Modifier.weight(1f),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Surface(
+                                        color = SecondaryEmerald.copy(alpha = 0.2f),
+                                        shape = CircleShape,
+                                        modifier = Modifier.size(42.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text(todayEmoji, fontSize = 20.sp)
+                                        }
+                                    }
+                                    Column {
+                                        Text(
+                                            text = "Today's Reflection Logged ($todayEmoji ${todayEntry?.mood ?: ""})",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        val previewText = todayEntry?.content?.replace("\n", " ")?.take(65) ?: ""
+                                        Text(
+                                            text = if (previewText.isNotBlank()) "\"$previewText...\"" else "Reflection saved.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                OutlinedButton(
+                                    onClick = onNavigateToJournal,
+                                    shape = RoundedCornerShape(10.dp),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Text("Edit", style = MaterialTheme.typography.labelMedium)
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // ── Habit Analytics Section ──
                 if (habits.isNotEmpty()) {
                     InsightSectionHeader("Habit Consistency & Strength", Icons.Default.SelfImprovement)
@@ -399,6 +524,146 @@ fun InsightsScreen(
                                         fontWeight = FontWeight.ExtraBold,
                                         color = Color(0xFFD97706)
                                     )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ── Journal & Mood Analytics Section ──
+                InsightSectionHeader("Journal & Mood Insights", Icons.Default.Book)
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        if (journalStats == null || journalStats.totalEntriesThisMonth == 0) {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = "No journal reflections for this month yet.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    OutlinedButton(
+                                        onClick = onNavigateToJournal,
+                                        shape = RoundedCornerShape(10.dp)
+                                    ) {
+                                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("Open Journal")
+                                    }
+                                }
+                            }
+                        } else {
+                            // Journal Highlights Row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                val moodRatingText = if (journalStats.avgMoodScore > 0f) {
+                                    String.format(java.util.Locale.US, "%.1f", journalStats.avgMoodScore)
+                                } else "-"
+                                InsightHighlightCard(
+                                    modifier = Modifier.weight(1f),
+                                    label = "😊 Avg Mood",
+                                    value = moodRatingText,
+                                    subtitle = "${journalStats.dominantMoodEmoji} ${journalStats.dominantMood}",
+                                    iconColor = Color(0xFF10B981),
+                                    bgColor = Color(0xFF10B981).copy(alpha = 0.1f)
+                                )
+                                InsightHighlightCard(
+                                    modifier = Modifier.weight(1f),
+                                    label = "🔥 Streak",
+                                    value = "${journalStats.currentStreak}d",
+                                    subtitle = "consecutive",
+                                    iconColor = Color(0xFFF59E0B),
+                                    bgColor = Color(0xFFF59E0B).copy(alpha = 0.1f)
+                                )
+                                InsightHighlightCard(
+                                    modifier = Modifier.weight(1f),
+                                    label = "✍️ Words",
+                                    value = "${journalStats.totalWordsThisMonth}",
+                                    subtitle = "~${journalStats.avgWordsPerEntry} w/entry",
+                                    iconColor = PrimaryIndigo,
+                                    bgColor = PrimaryIndigo.copy(alpha = 0.1f)
+                                )
+                            }
+
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                            // Mood Distribution Breakdown
+                            Text(
+                                text = "Mood Distribution (${journalStats.totalEntriesThisMonth} Reflections)",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            val moodItems = listOf(
+                                Triple("Great", "🤩", SecondaryEmerald),
+                                Triple("Good", "😊", PrimaryIndigo),
+                                Triple("Neutral", "😐", Color(0xFFF59E0B)),
+                                Triple("Bad", "😔", Color(0xFFF97316)),
+                                Triple("Awful", "😫", PriorityHigh)
+                            )
+                            val maxMoodCount = maxOf(journalStats.moodDistribution.values.maxOrNull() ?: 1, 1)
+
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                moodItems.forEach { (moodName, emoji, color) ->
+                                    val count = journalStats.moodDistribution[moodName] ?: 0
+                                    val ratio = count.toFloat() / maxMoodCount
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Text("$emoji $moodName", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(90.dp))
+                                        LinearProgressIndicator(
+                                            progress = { ratio },
+                                            modifier = Modifier.weight(1f).height(8.dp).clip(RoundedCornerShape(4.dp)),
+                                            color = color,
+                                            trackColor = MaterialTheme.colorScheme.surface
+                                        )
+                                        Text(
+                                            "$count",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.width(24.dp),
+                                            textAlign = TextAlign.End
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Smart Mindfulness Correlation Tip
+                            val mindfulnessTip = when {
+                                data.completedTasksThisMonth >= 15 && journalStats.avgMoodScore >= 3.8f ->
+                                    "🌟 Excellent balance! High task throughput paired with positive mood."
+                                data.completedTasksThisMonth >= 15 && journalStats.avgMoodScore > 0f && journalStats.avgMoodScore < 3.0f ->
+                                    "💡 Heavy workload detected with lower mood. Consider scheduling relaxation time."
+                                journalStats.currentStreak >= 5 ->
+                                    "🧘 Great streak! Regular journaling builds clarity and long-term self-awareness."
+                                else ->
+                                    "📝 Journaling consistently helps spot patterns between your daily workload and energy levels."
+                            }
+
+                            Surface(
+                                color = MaterialTheme.colorScheme.surface,
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(10.dp).fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(Icons.Default.Lightbulb, contentDescription = null, tint = Color(0xFFF59E0B), modifier = Modifier.size(18.dp))
+                                    Text(mindfulnessTip, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
                                 }
                             }
                         }
@@ -605,7 +870,9 @@ fun InsightsScreen(
                             tasks = allTasks,
                             habits = habits,
                             habitStats = habitStats,
-                            projects = projects
+                            projects = projects,
+                            journalEntries = allJournalEntries,
+                            journalStats = journalStats
                         )
                         ReportExporter.shareReport(
                             context = context,
@@ -625,7 +892,8 @@ fun InsightsScreen(
                         val csv = ReportExporter.generateCsvReport(
                             tasks = allTasks,
                             habits = habits,
-                            habitStats = habitStats
+                            habitStats = habitStats,
+                            journalEntries = allJournalEntries
                         )
                         ReportExporter.shareReport(
                             context = context,
