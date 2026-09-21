@@ -31,6 +31,8 @@ import com.sg.taskspace.ui.theme.PriorityLow
 import com.sg.taskspace.ui.theme.PriorityMedium
 import com.sg.taskspace.ui.theme.PrimaryIndigo
 import com.sg.taskspace.ui.theme.SecondaryEmerald
+import com.sg.taskspace.ui.viewmodel.AchievementCategory
+import com.sg.taskspace.ui.viewmodel.AchievementsViewModel
 import com.sg.taskspace.ui.viewmodel.HabitViewModel
 import com.sg.taskspace.ui.viewmodel.TaskViewModel
 import com.sg.taskspace.util.ReportExporter
@@ -45,7 +47,9 @@ fun InsightsScreen(
     habitViewModel: HabitViewModel? = null,
     projectViewModel: com.sg.taskspace.ui.viewmodel.ProjectViewModel? = null,
     journalViewModel: com.sg.taskspace.ui.viewmodel.JournalViewModel? = null,
+    achievementsViewModel: AchievementsViewModel? = null,
     onNavigateToJournal: () -> Unit = {},
+    onNavigateToAchievements: () -> Unit = {},
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -71,6 +75,8 @@ fun InsightsScreen(
     val journalStats = remember(currentMonth, allJournalEntries) {
         journalViewModel?.computeJournalStats(currentMonth, allJournalEntries)
     }
+
+    val achievementsUiState by achievementsViewModel?.uiState?.collectAsState() ?: remember { mutableStateOf(null) }
 
     var showExportDialog by remember { mutableStateOf(false) }
 
@@ -825,6 +831,143 @@ fun InsightsScreen(
                     }
                 }
 
+                // ── Achievements & Gamification Progress ──
+                achievementsUiState?.let { achState ->
+                    InsightSectionHeader("Achievements & Badges", Icons.Default.EmojiEvents)
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "Badges Unlocked",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "${achState.summary.unlockedCount} of ${achState.summary.totalCount} completed (${(achState.summary.overallProgress * 100).toInt()}%)",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                Surface(
+                                    color = PrimaryIndigo.copy(alpha = 0.15f),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text(
+                                        text = "🏆 ${achState.summary.totalXpEarned} XP",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = PrimaryIndigo,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+
+                            LinearProgressIndicator(
+                                progress = { achState.summary.overallProgress },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(8.dp)
+                                    .clip(RoundedCornerShape(4.dp)),
+                                color = SecondaryEmerald,
+                                trackColor = MaterialTheme.colorScheme.surface
+                            )
+
+                            // Category breakdown chips row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                val habitsBuild = achState.allAchievements.filter { it.definition.category == AchievementCategory.BuildHabits }
+                                val habitsQuit = achState.allAchievements.filter { it.definition.category == AchievementCategory.QuitHabits }
+                                val tasksAch = achState.allAchievements.filter { it.definition.category == AchievementCategory.Tasks }
+
+                                val buildUnlocked = habitsBuild.count { it.unlocked }
+                                val quitUnlocked = habitsQuit.count { it.unlocked }
+                                val tasksUnlocked = tasksAch.count { it.unlocked }
+
+                                InsightHighlightCard(
+                                    modifier = Modifier.weight(1f),
+                                    label = "🌱 Build",
+                                    value = "$buildUnlocked/${habitsBuild.size}",
+                                    subtitle = "habits",
+                                    iconColor = SecondaryEmerald,
+                                    bgColor = SecondaryEmerald.copy(alpha = 0.1f)
+                                )
+
+                                InsightHighlightCard(
+                                    modifier = Modifier.weight(1f),
+                                    label = "🛑 Quit",
+                                    value = "$quitUnlocked/${habitsQuit.size}",
+                                    subtitle = "unquittable",
+                                    iconColor = PriorityHigh,
+                                    bgColor = PriorityHigh.copy(alpha = 0.1f)
+                                )
+
+                                InsightHighlightCard(
+                                    modifier = Modifier.weight(1f),
+                                    label = "📋 Tasks",
+                                    value = "$tasksUnlocked/${tasksAch.size}",
+                                    subtitle = "mastery",
+                                    iconColor = PrimaryIndigo,
+                                    bgColor = PrimaryIndigo.copy(alpha = 0.1f)
+                                )
+                            }
+
+                            // Next Milestone Hint
+                            achState.nextAchievement?.let { next ->
+                                Surface(
+                                    color = MaterialTheme.colorScheme.surface,
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .padding(10.dp)
+                                            .fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(next.definition.iconEmoji, fontSize = 20.sp)
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = "Next: ${next.definition.title}",
+                                                style = MaterialTheme.typography.labelMedium,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Text(
+                                                text = "${next.current}/${next.definition.target} (${next.remaining} remaining)",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            OutlinedButton(
+                                onClick = onNavigateToAchievements,
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.EmojiEvents, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("View All Badges & Milestones")
+                            }
+                        }
+                    }
+                }
+
                 // ── Motivational summary ──
                 val motivationMsg = when {
                     data.completionRateThisMonth >= 90 -> "Outstanding! You're crushing it this month!"
@@ -872,7 +1015,8 @@ fun InsightsScreen(
                             habitStats = habitStats,
                             projects = projects,
                             journalEntries = allJournalEntries,
-                            journalStats = journalStats
+                            journalStats = journalStats,
+                            achievementsUiState = achievementsUiState
                         )
                         ReportExporter.shareReport(
                             context = context,
@@ -893,7 +1037,8 @@ fun InsightsScreen(
                             tasks = allTasks,
                             habits = habits,
                             habitStats = habitStats,
-                            journalEntries = allJournalEntries
+                            journalEntries = allJournalEntries,
+                            achievements = achievementsUiState?.allAchievements ?: emptyList()
                         )
                         ReportExporter.shareReport(
                             context = context,

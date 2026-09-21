@@ -12,6 +12,8 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 
 import com.sg.taskspace.data.JournalEntry
+import com.sg.taskspace.ui.viewmodel.AchievementProgress
+import com.sg.taskspace.ui.viewmodel.AchievementsUiState
 import com.sg.taskspace.ui.viewmodel.JournalViewModel
 
 object ReportExporter {
@@ -24,7 +26,8 @@ object ReportExporter {
         habitStats: Map<String, HabitViewModel.HabitStats>,
         projects: List<Project>,
         journalEntries: List<JournalEntry> = emptyList(),
-        journalStats: JournalViewModel.JournalStats? = null
+        journalStats: JournalViewModel.JournalStats? = null,
+        achievementsUiState: AchievementsUiState? = null
     ): String {
         val monthTitle = month.format(DateTimeFormatter.ofPattern("MMMM yyyy"))
         val builder = StringBuilder()
@@ -117,6 +120,22 @@ object ReportExporter {
             builder.appendLine()
         }
 
+        // 6. Achievements & Milestones
+        if (achievementsUiState != null) {
+            builder.appendLine("## Achievements & Milestones")
+            val summary = achievementsUiState.summary
+            builder.appendLine("- Badges Unlocked: ${summary.unlockedCount} / ${summary.totalCount} (${(summary.overallProgress * 100).toInt()}%)")
+            builder.appendLine("- Total Badge XP Earned: ${summary.totalXpEarned} / ${summary.totalPossibleXp} XP")
+            builder.appendLine()
+            builder.appendLine("| Badge | Category | Status | Progress | XP Reward |")
+            builder.appendLine("| --- | --- | --- | --- | --- |")
+            achievementsUiState.allAchievements.forEach { ach ->
+                val status = if (ach.unlocked) "Unlocked" else "In Progress"
+                builder.appendLine("| ${ach.definition.iconEmoji} ${ach.definition.title} | ${ach.definition.category.displayName} | $status | ${ach.current}/${ach.definition.target} | +${ach.definition.xpReward} XP |")
+            }
+            builder.appendLine()
+        }
+
         builder.appendLine("---")
         builder.appendLine("*Report exported from TaskSpace*")
 
@@ -127,7 +146,8 @@ object ReportExporter {
         tasks: List<Task>,
         habits: List<Habit>,
         habitStats: Map<String, HabitViewModel.HabitStats>,
-        journalEntries: List<JournalEntry> = emptyList()
+        journalEntries: List<JournalEntry> = emptyList(),
+        achievements: List<AchievementProgress> = emptyList()
     ): String {
         val builder = StringBuilder()
 
@@ -159,6 +179,16 @@ object ReportExporter {
                 val words = if (entry.content.isBlank()) 0 else entry.content.trim().split("\\s+".toRegex()).size
                 val cleanContent = entry.content.replace("\"", "\"\"").replace("\n", " ").take(100)
                 builder.appendLine("\"${entry.date}\",\"${entry.mood}\",$words,\"$cleanContent\"")
+            }
+        }
+
+        if (achievements.isNotEmpty()) {
+            builder.appendLine()
+            builder.appendLine("=== ACHIEVEMENTS ===")
+            builder.appendLine("Title,Category,Unlocked,Current,Target,XpReward")
+            achievements.forEach { ach ->
+                val cleanTitle = ach.definition.title.replace("\"", "\"\"")
+                builder.appendLine("\"$cleanTitle\",${ach.definition.category.name},${ach.unlocked},${ach.current},${ach.definition.target},${ach.definition.xpReward}")
             }
         }
 
