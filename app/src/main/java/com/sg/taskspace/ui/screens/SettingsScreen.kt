@@ -35,6 +35,7 @@ import com.sg.taskspace.ui.viewmodel.TaskViewModel
 import com.sg.taskspace.ui.components.BackupDiffDialog
 import com.sg.taskspace.data.BackupDiffResult
 import com.sg.taskspace.data.UserPreferences
+import com.sg.taskspace.ui.components.TaskSpaceBrandHeader
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,7 +64,7 @@ fun SettingsScreen(
 
     val currentTheme = userPreferences?.themeMode ?: "AMOLED Dark"
     val currentFont = userPreferences?.fontFamily ?: "Default"
-    val currentPalette = userPreferences?.colorPalette ?: "Indigo"
+    val currentPalette = userPreferences?.colorPalette ?: "Rose"
     val isSecureBackup = userPreferences?.isSecureBackupEnabled ?: true
     val autoBackupFrequency = userPreferences?.autoBackupFrequency ?: "Daily"
     val notificationsEnabled = userPreferences?.notificationsEnabled ?: false
@@ -858,8 +859,8 @@ fun SettingsScreen(
             SettingsSectionTitle("About")
             SettingsItem(
                 icon = Icons.Default.Info,
-                title = "Version",
-                subtitle = "v${BuildConfig.VERSION_NAME} - TaskSpace",  
+                title = "Version - v${BuildConfig.VERSION_NAME}",
+                subtitle = "100% Offline • Private • Focus Engine" , 
                 onClick = { }
             )
         }
