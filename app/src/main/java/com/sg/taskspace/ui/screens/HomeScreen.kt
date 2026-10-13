@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Loop
 import androidx.compose.material.icons.filled.Flag
@@ -74,6 +75,7 @@ fun HomeScreen(
     val weeklyStats by viewModel.weeklyStats.collectAsState()
     val weeklyTasks by viewModel.weeklyTasks.collectAsState()
     val userPreferences by viewModel.userPreferences.collectAsState()
+    val overdueTasks by viewModel.overdueTasks.collectAsState()
 
     var selectedTag by remember { mutableStateOf("All") }
     var isTimelineView by remember { mutableStateOf(false) }
@@ -103,6 +105,37 @@ fun HomeScreen(
             )
             if (result == SnackbarResult.ActionPerformed) {
                 viewModel.restoreTask(taskToDelete.id)
+            }
+        }
+    }
+
+    fun moveOverdueTaskWithUndo(task: Task) {
+        val originalDate = task.createdForDate
+        viewModel.moveTaskToToday(task)
+        coroutineScope.launch {
+            val result = snackbarHostState.showSnackbar(
+                message = "Moved '${task.title}' to Today",
+                actionLabel = "Undo",
+                duration = SnackbarDuration.Short
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.restoreTaskDate(task, originalDate)
+            }
+        }
+    }
+
+    fun moveAllOverdueWithUndo(tasksToMove: List<Task>) {
+        if (tasksToMove.isEmpty()) return
+        val backupList = tasksToMove.map { it to it.createdForDate }
+        viewModel.moveAllOverdueTasksToToday(tasksToMove)
+        coroutineScope.launch {
+            val result = snackbarHostState.showSnackbar(
+                message = "Moved ${backupList.size} overdue tasks to Today",
+                actionLabel = "Undo",
+                duration = SnackbarDuration.Short
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.restoreTasksDates(backupList)
             }
         }
     }
@@ -501,6 +534,76 @@ fun HomeScreen(
                             )
                         }
                     }
+                }
+            }
+
+            // Overdue Tasks Banner / Section
+            if (overdueTasks.isNotEmpty() && selectedDate == java.time.LocalDate.now()) {
+                item {
+                    val filteredOverdueTasks = remember(overdueTasks, selectedTag) {
+                        if (selectedTag == "All") overdueTasks
+                        else overdueTasks.filter { task ->
+                            task.tags.split(",").map { it.trim().removePrefix("#").lowercase() }
+                                .contains(selectedTag.removePrefix("#").lowercase())
+                        }
+                    }
+                    if (filteredOverdueTasks.isNotEmpty()) {
+                        com.sg.taskspace.ui.components.OverdueSection(
+                            overdueTasks = filteredOverdueTasks,
+                            projectsMap = projectsMap,
+                            onMoveTaskToToday = { moveOverdueTaskWithUndo(it) },
+                            onMoveAllToToday = { moveAllOverdueWithUndo(filteredOverdueTasks) },
+                            onToggleTask = { viewModel.toggleTaskCompletion(it) },
+                            onTaskClick = { selectedTask = it },
+                            onDeleteTask = { deleteTaskWithUndo(it) },
+                            swipeRightAction = userPreferences?.swipeRightAction ?: "Complete",
+                            swipeLeftAction = userPreferences?.swipeLeftAction ?: "Delete",
+                            soundEffectsEnabled = userPreferences?.soundEffectsEnabled ?: true
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
+            } else if (overdueTasks.isNotEmpty() && selectedDate != java.time.LocalDate.now()) {
+                item {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { viewModel.selectDate(java.time.LocalDate.now()) },
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.35f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.EventBusy,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = "${overdueTasks.size} tasks overdue",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            }
+                            Text(
+                                text = "View Today →",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
             }
 

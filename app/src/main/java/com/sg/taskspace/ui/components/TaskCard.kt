@@ -17,7 +17,9 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Today
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -60,6 +62,9 @@ fun TaskCard(
     onClick: () -> Unit,
     onDelete: () -> Unit,
     onSnooze: (() -> Unit)? = null,
+    onMoveToToday: (() -> Unit)? = null,
+    isOverdue: Boolean = false,
+    overdueLabel: String? = null,
     projectName: String? = null,
     swipeRightAction: String = "Complete",
     swipeLeftAction: String = "Delete",
@@ -305,6 +310,35 @@ fun TaskCard(
                                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
+                                    // Overdue chip
+                                    if (isOverdue) {
+                                        Surface(
+                                            color = MaterialTheme.colorScheme.error.copy(alpha = 0.12f),
+                                            shape = RoundedCornerShape(6.dp),
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.35f))
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.EventBusy,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(10.dp),
+                                                    tint = MaterialTheme.colorScheme.error
+                                                )
+                                                Text(
+                                                    text = overdueLabel ?: "Overdue",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.error,
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        }
+                                    }
+
                                     // Priority chip
                                     Surface(
                                         color = priorityContainerColor.copy(alpha = 0.6f),
@@ -419,6 +453,24 @@ fun TaskCard(
                                     }
                                 }
                             }
+                        }
+
+                        if (onMoveToToday != null && !task.isCompleted) {
+                            FilledTonalIconButton(
+                                onClick = onMoveToToday,
+                                modifier = Modifier.size(34.dp),
+                                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f),
+                                    contentColor = MaterialTheme.colorScheme.primary
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Today,
+                                    contentDescription = "Move to Today",
+                                    modifier = Modifier.size(17.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(4.dp))
                         }
 
                         IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {

@@ -236,6 +236,71 @@ class TaskViewModel(
         }
     }
 
+    // Overdue Tasks Logic
+    val overdueTasks: StateFlow<List<Task>> = taskRepository.getAllTasks()
+        .map { allTasks ->
+            val currentTodayIso = LocalDate.now().format(DateTimeFormatter.ISO_DATE)
+            allTasks.filter { !it.isCompleted && !it.isDeleted && it.repeat == "None" && it.createdForDate < currentTodayIso }
+                .sortedWith(
+                    compareByDescending<Task> { it.createdForDate }
+                        .thenBy {
+                            when (it.priority.lowercase()) {
+                                "high" -> 1
+                                "medium" -> 2
+                                "low" -> 3
+                                else -> 4
+                            }
+                        }
+                )
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    fun moveTaskToToday(task: Task) {
+        viewModelScope.launch {
+            val currentTodayIso = LocalDate.now().format(DateTimeFormatter.ISO_DATE)
+            val updated = task.copy(createdForDate = currentTodayIso, isCompleted = false)
+            taskRepository.updateTask(updated)
+            scheduleTaskReminderIfNeeded(updated)
+            com.sg.taskspace.util.NotificationHelper.updateDailyDashboardNotification(TaskSpaceApplication.instance)
+        }
+    }
+
+    fun moveAllOverdueTasksToToday(tasks: List<Task>) {
+        viewModelScope.launch {
+            val currentTodayIso = LocalDate.now().format(DateTimeFormatter.ISO_DATE)
+            tasks.forEach { task ->
+                val updated = task.copy(createdForDate = currentTodayIso, isCompleted = false)
+                taskRepository.updateTask(updated)
+                scheduleTaskReminderIfNeeded(updated)
+            }
+            com.sg.taskspace.util.NotificationHelper.updateDailyDashboardNotification(TaskSpaceApplication.instance)
+        }
+    }
+
+    fun restoreTaskDate(task: Task, originalDate: String) {
+        viewModelScope.launch {
+            val updated = task.copy(createdForDate = originalDate)
+            taskRepository.updateTask(updated)
+            scheduleTaskReminderIfNeeded(updated)
+            com.sg.taskspace.util.NotificationHelper.updateDailyDashboardNotification(TaskSpaceApplication.instance)
+        }
+    }
+
+    fun restoreTasksDates(entries: List<Pair<Task, String>>) {
+        viewModelScope.launch {
+            entries.forEach { (task, origDate) ->
+                val updated = task.copy(createdForDate = origDate)
+                taskRepository.updateTask(updated)
+                scheduleTaskReminderIfNeeded(updated)
+            }
+            com.sg.taskspace.util.NotificationHelper.updateDailyDashboardNotification(TaskSpaceApplication.instance)
+        }
+    }
+
     fun completeOnboarding() {
         viewModelScope.launch {
             userPreferencesRepository.setOnboardingCompleted(true)
