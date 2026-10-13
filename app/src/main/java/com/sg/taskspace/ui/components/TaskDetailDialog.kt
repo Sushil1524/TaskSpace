@@ -53,6 +53,7 @@ import java.util.Calendar
 fun TaskDetailDialog(
     task: Task,
     projects: List<Project> = emptyList(),
+    viewModel: com.sg.taskspace.ui.viewmodel.TaskViewModel? = null,
     onDismissRequest: () -> Unit,
     onUpdateTask: (Task) -> Unit,
     onDeleteTask: (Task) -> Unit
@@ -68,7 +69,15 @@ fun TaskDetailDialog(
     var editedTags by remember { mutableStateOf(task.tags) }
     var editedRepeat by remember { mutableStateOf(task.repeat) }
     var editedEstimatedMinutes by remember { mutableStateOf(task.estimatedMinutes) }
+    var editedTrackedMinutes by remember { mutableStateOf(task.trackedMinutes) }
     var editedTime by remember { mutableStateOf(task.time) }
+    var showEditTrackedDialogInEditMode by remember { mutableStateOf(false) }
+
+    val focusTimerState by (viewModel?.focusTimerState?.collectAsState() ?: com.sg.taskspace.util.FocusTimerManager.timerState.collectAsState())
+    val focusTimerElapsedSeconds by (viewModel?.focusTimerElapsedSeconds?.collectAsState() ?: com.sg.taskspace.util.FocusTimerManager.elapsedSeconds.collectAsState())
+    val isTimerActive = focusTimerState.taskId == task.id
+    val isTimerRunning = isTimerActive && focusTimerState.isRunning
+    val activeOnOther = focusTimerState.taskId != null && focusTimerState.taskId != task.id
 
     var editedDate by remember {
         mutableStateOf(
@@ -399,6 +408,22 @@ fun TaskDetailDialog(
                             }
                         }
 
+                        // Tracked Focus Time
+                        SectionHeader("Tracked Time")
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = { showEditTrackedDialogInEditMode = true },
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Icon(Icons.Default.Timer, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(if (editedTrackedMinutes > 0) "${formatMinutes(editedTrackedMinutes)} tracked" else "0m tracked")
+                            }
+                        }
+
                         // Tags
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             OutlinedTextField(
@@ -512,6 +537,45 @@ fun TaskDetailDialog(
                         }
 
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                        // ── Focus Timer Section ──
+                        FocusTimerCard(
+                            task = task,
+                            isTimerRunningForThisTask = isTimerRunning,
+                            isTimerActiveForThisTask = isTimerActive,
+                            activeOnOtherTask = activeOnOther,
+                            elapsedSeconds = focusTimerElapsedSeconds,
+                            onStartTimer = {
+                                if (viewModel != null) viewModel.startFocusTimer(task)
+                                else com.sg.taskspace.util.FocusTimerManager.startTimer(task.id, task.title)
+                            },
+                            onPauseTimer = {
+                                if (viewModel != null) viewModel.pauseFocusTimer()
+                                else com.sg.taskspace.util.FocusTimerManager.pauseTimer()
+                            },
+                            onResumeTimer = {
+                                if (viewModel != null) viewModel.resumeFocusTimer()
+                                else com.sg.taskspace.util.FocusTimerManager.resumeTimer()
+                            },
+                            onStopTimer = {
+                                if (viewModel != null) {
+                                    viewModel.stopFocusTimer(task)
+                                } else {
+                                    val res = com.sg.taskspace.util.FocusTimerManager.stopTimer()
+                                    if (res != null && res.second > 0) {
+                                        onUpdateTask(task.copy(trackedMinutes = task.trackedMinutes + res.second))
+                                    }
+                                }
+                            },
+                            onDiscardTimer = {
+                                if (viewModel != null) viewModel.discardFocusTimer()
+                                else com.sg.taskspace.util.FocusTimerManager.discardTimer()
+                            },
+                            onEditTrackedMinutes = { mins ->
+                                if (viewModel != null) viewModel.updateTaskTrackedMinutes(task, mins)
+                                else onUpdateTask(task.copy(trackedMinutes = mins))
+                            }
+                        )
 
                         // Metadata Grid
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -675,6 +739,7 @@ fun TaskDetailDialog(
                                         createdForDate = editedDate.format(DateTimeFormatter.ISO_DATE),
                                         repeat = editedRepeat,
                                         estimatedMinutes = editedEstimatedMinutes,
+                                        trackedMinutes = editedTrackedMinutes,
                                         time = editedTime
                                     )
                                 )
@@ -713,6 +778,17 @@ fun TaskDetailDialog(
                 }
             }
         }
+    }
+
+    if (showEditTrackedDialogInEditMode) {
+        EditTrackedTimeDialog(
+            currentMinutes = editedTrackedMinutes,
+            onDismiss = { showEditTrackedDialogInEditMode = false },
+            onConfirm = { mins ->
+                editedTrackedMinutes = mins
+                showEditTrackedDialogInEditMode = false
+            }
+        )
     }
 }
 

@@ -308,6 +308,29 @@ fun TaskDetailScreen(
                     }
                 }
 
+                // ── Focus Timer Card ──
+                Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) {
+                    val focusTimerState by viewModel.focusTimerState.collectAsState()
+                    val focusTimerElapsedSeconds by viewModel.focusTimerElapsedSeconds.collectAsState()
+                    val isTimerActive = focusTimerState.taskId == task!!.id
+                    val isTimerRunning = isTimerActive && focusTimerState.isRunning
+                    val activeOnOther = focusTimerState.taskId != null && focusTimerState.taskId != task!!.id
+
+                    com.sg.taskspace.ui.components.FocusTimerCard(
+                        task = task!!,
+                        isTimerRunningForThisTask = isTimerRunning,
+                        isTimerActiveForThisTask = isTimerActive,
+                        activeOnOtherTask = activeOnOther,
+                        elapsedSeconds = focusTimerElapsedSeconds,
+                        onStartTimer = { viewModel.startFocusTimer(task!!) },
+                        onPauseTimer = { viewModel.pauseFocusTimer() },
+                        onResumeTimer = { viewModel.resumeFocusTimer() },
+                        onStopTimer = { viewModel.stopFocusTimer(task!!) },
+                        onDiscardTimer = { viewModel.discardFocusTimer() },
+                        onEditTrackedMinutes = { mins -> viewModel.updateTaskTrackedMinutes(task!!, mins) }
+                    )
+                }
+
                 // ── Tags ──
                 if (task!!.tags.isNotBlank()) {
                     val tags = task!!.tags.split(",").map { it.trim() }.filter { it.isNotBlank() }

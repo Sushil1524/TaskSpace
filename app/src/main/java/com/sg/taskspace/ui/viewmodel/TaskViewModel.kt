@@ -301,6 +301,44 @@ class TaskViewModel(
         }
     }
 
+    // ── Focus Timer Integration ─────────────────────────────────────────────
+    val focusTimerState: StateFlow<com.sg.taskspace.util.FocusTimerState> = com.sg.taskspace.util.FocusTimerManager.timerState
+    val focusTimerElapsedSeconds: StateFlow<Long> = com.sg.taskspace.util.FocusTimerManager.elapsedSeconds
+
+    fun startFocusTimer(task: Task) {
+        com.sg.taskspace.util.FocusTimerManager.startTimer(task.id, task.title)
+    }
+
+    fun pauseFocusTimer() {
+        com.sg.taskspace.util.FocusTimerManager.pauseTimer()
+    }
+
+    fun resumeFocusTimer() {
+        com.sg.taskspace.util.FocusTimerManager.resumeTimer()
+    }
+
+    fun stopFocusTimer(task: Task) {
+        viewModelScope.launch {
+            val result = com.sg.taskspace.util.FocusTimerManager.stopTimer()
+            if (result != null && result.second > 0) {
+                val newTracked = task.trackedMinutes + result.second
+                val updated = task.copy(trackedMinutes = newTracked)
+                taskRepository.updateTask(updated)
+            }
+        }
+    }
+
+    fun discardFocusTimer() {
+        com.sg.taskspace.util.FocusTimerManager.discardTimer()
+    }
+
+    fun updateTaskTrackedMinutes(task: Task, newMinutes: Int) {
+        viewModelScope.launch {
+            val updated = task.copy(trackedMinutes = maxOf(0, newMinutes))
+            taskRepository.updateTask(updated)
+        }
+    }
+
     fun completeOnboarding() {
         viewModelScope.launch {
             userPreferencesRepository.setOnboardingCompleted(true)

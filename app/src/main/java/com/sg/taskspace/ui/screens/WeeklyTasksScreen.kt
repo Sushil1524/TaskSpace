@@ -63,6 +63,7 @@ fun WeeklyTasksScreen(
         com.sg.taskspace.ui.components.TaskDetailDialog(
             task = taskToEdit!!,
             projects = projects,
+            viewModel = viewModel,
             onDismissRequest = { taskToEdit = null },
             onUpdateTask = { updatedTask ->
                 viewModel.updateTaskDetails(updatedTask)

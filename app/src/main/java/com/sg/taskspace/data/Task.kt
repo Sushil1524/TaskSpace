@@ -19,6 +19,7 @@ data class Task(
     @SerializedName("projectId") val projectId: String? = null, // ID of the associated Project
     @SerializedName("tags") val tags: String = "", // Comma-separated tags e.g. "#urgent,#design"
     @SerializedName("estimatedMinutes") val estimatedMinutes: Int = 0, // 0 means not set
+    @SerializedName("trackedMinutes") val trackedMinutes: Int = 0, // Minutes tracked via focus timer or manual entry
 
     // Scheduling & Recurrence
     @SerializedName("createdForDate") val createdForDate: String, // YYYY-MM-DD (The date this task belongs to)
