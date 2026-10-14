@@ -33,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.flow.firstOrNull
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
@@ -76,6 +77,8 @@ fun HomeScreen(
     val weeklyTasks by viewModel.weeklyTasks.collectAsState()
     val userPreferences by viewModel.userPreferences.collectAsState()
     val overdueTasks by viewModel.overdueTasks.collectAsState()
+    val focusTimerState by viewModel.focusTimerState.collectAsState()
+    val focusTimerElapsedSeconds by viewModel.focusTimerElapsedSeconds.collectAsState()
 
     var selectedTag by remember { mutableStateOf("All") }
     var isTimelineView by remember { mutableStateOf(false) }
@@ -251,13 +254,68 @@ fun HomeScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Sticky Focus Mini-Player when a focus session is active
+            com.sg.taskspace.ui.components.FocusMiniPlayer(
+                state = focusTimerState,
+                elapsedSeconds = focusTimerElapsedSeconds,
+                onPause = { viewModel.pauseFocusTimer() },
+                onResume = { viewModel.resumeFocusTimer() },
+                onStop = {
+                    viewModel.stopFocusTimer { title, mins ->
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar(
+                                message = if (mins > 0) "Logged ${mins}m focus time for '$title'" else "Focus session finished",
+                                duration = SnackbarDuration.Short
+                            )
+                        }
+                    }
+                },
+                onDiscard = {
+                    if (focusTimerElapsedSeconds >= 5L) {
+                        viewModel.stopFocusTimer { title, mins ->
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar(
+                                    message = if (mins > 0) "Logged ${mins}m focus time for '$title'" else "Focus session closed",
+                                    duration = SnackbarDuration.Short
+                                )
+                            }
+                        }
+                    } else {
+                        viewModel.discardFocusTimer()
+                    }
+                },
+                onClick = {
+                    val activeTaskId = focusTimerState.taskId
+                    if (activeTaskId != null) {
+                        val activeTask = tasks.find { it.id == activeTaskId }
+                            ?: overdueTasks.find { it.id == activeTaskId }
+                            ?: weeklyTasks.find { it.id == activeTaskId }
+                        if (activeTask != null) {
+                            selectedTask = activeTask
+                        } else {
+                            coroutineScope.launch {
+                                val found = viewModel.getTaskById(activeTaskId).firstOrNull()
+                                if (found != null) {
+                                    selectedTask = found
+                                }
+                            }
+                        }
+                    }
+                }
+            )
+
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
             item {
                 userPreferences?.let { prefs ->
                     com.sg.taskspace.ui.components.VacationModeBanner(
@@ -557,6 +615,17 @@ fun HomeScreen(
                             onToggleTask = { viewModel.toggleTaskCompletion(it) },
                             onTaskClick = { selectedTask = it },
                             onDeleteTask = { deleteTaskWithUndo(it) },
+                            onFocusClick = { task ->
+                                if (focusTimerState.taskId == task.id) {
+                                    if (focusTimerState.isRunning) viewModel.pauseFocusTimer()
+                                    else viewModel.resumeFocusTimer()
+                                } else {
+                                    viewModel.startFocusTimer(task)
+                                }
+                            },
+                            activeFocusTaskId = focusTimerState.taskId,
+                            isFocusRunning = focusTimerState.isRunning,
+                            focusElapsedSeconds = focusTimerElapsedSeconds,
                             swipeRightAction = userPreferences?.swipeRightAction ?: "Complete",
                             swipeLeftAction = userPreferences?.swipeLeftAction ?: "Delete",
                             soundEffectsEnabled = userPreferences?.soundEffectsEnabled ?: true
@@ -657,6 +726,17 @@ fun HomeScreen(
                         onClick = { selectedTask = task },
                         onDelete = { deleteTaskWithUndo(task) },
                         onSnooze = { viewModel.snoozeTaskToTomorrow(task) },
+                        onFocusClick = {
+                            if (focusTimerState.taskId == task.id) {
+                                if (focusTimerState.isRunning) viewModel.pauseFocusTimer()
+                                else viewModel.resumeFocusTimer()
+                            } else {
+                                viewModel.startFocusTimer(task)
+                            }
+                        },
+                        isFocusRunning = focusTimerState.taskId == task.id && focusTimerState.isRunning,
+                        isFocusActive = focusTimerState.taskId == task.id,
+                        focusElapsedSeconds = focusTimerElapsedSeconds,
                         projectName = task.projectId?.let { projectsMap[it]?.name },
                         swipeRightAction = swipeRightAction,
                         swipeLeftAction = swipeLeftAction,
@@ -710,6 +790,7 @@ fun HomeScreen(
             item { Spacer(modifier = Modifier.height(80.dp)) }
         }
     }
+}
 }
 
 @Composable

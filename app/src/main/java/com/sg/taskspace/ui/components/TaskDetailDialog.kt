@@ -568,8 +568,19 @@ fun TaskDetailDialog(
                                 }
                             },
                             onDiscardTimer = {
-                                if (viewModel != null) viewModel.discardFocusTimer()
-                                else com.sg.taskspace.util.FocusTimerManager.discardTimer()
+                                if (focusTimerElapsedSeconds >= 5L) {
+                                    if (viewModel != null) {
+                                        viewModel.stopFocusTimer(task)
+                                    } else {
+                                        val res = com.sg.taskspace.util.FocusTimerManager.stopTimer()
+                                        if (res != null && res.second > 0) {
+                                            onUpdateTask(task.copy(trackedMinutes = task.trackedMinutes + res.second))
+                                        }
+                                    }
+                                } else {
+                                    if (viewModel != null) viewModel.discardFocusTimer()
+                                    else com.sg.taskspace.util.FocusTimerManager.discardTimer()
+                                }
                             },
                             onEditTrackedMinutes = { mins ->
                                 if (viewModel != null) viewModel.updateTaskTrackedMinutes(task, mins)

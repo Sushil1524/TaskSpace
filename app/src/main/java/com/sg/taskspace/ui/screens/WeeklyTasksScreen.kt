@@ -15,6 +15,8 @@ import androidx.compose.ui.unit.dp
 import com.sg.taskspace.data.Task
 import com.sg.taskspace.ui.components.TaskCard
 import com.sg.taskspace.ui.viewmodel.TaskViewModel
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,11 +32,14 @@ fun WeeklyTasksScreen(
     val projectsMap = remember(projects) { projects.associateBy { it.id } }
     
     val userPreferences by viewModel.userPreferences.collectAsState()
+    val focusTimerState by viewModel.focusTimerState.collectAsState()
+    val focusTimerElapsedSeconds by viewModel.focusTimerElapsedSeconds.collectAsState()
     val swipeRightAction = userPreferences?.swipeRightAction ?: "Complete"
     val swipeLeftAction = userPreferences?.swipeLeftAction ?: "Delete"
 
     var currentTabDate by remember { mutableStateOf(selectedDate) }
     var taskToEdit by remember { mutableStateOf<Task?>(null) }
+    val coroutineScope = rememberCoroutineScope()
 
     // Calculate week days starting from SUNDAY
     val weekDays = remember(currentTabDate) {
@@ -123,14 +128,52 @@ fun WeeklyTasksScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp)
         ) {
+            com.sg.taskspace.ui.components.FocusMiniPlayer(
+                state = focusTimerState,
+                elapsedSeconds = focusTimerElapsedSeconds,
+                onPause = { viewModel.pauseFocusTimer() },
+                onResume = { viewModel.resumeFocusTimer() },
+                onStop = {
+                    viewModel.stopFocusTimer()
+                },
+                onDiscard = {
+                    if (focusTimerElapsedSeconds >= 5L) {
+                        viewModel.stopFocusTimer()
+                    } else {
+                        viewModel.discardFocusTimer()
+                    }
+                },
+                onClick = {
+                    val activeTaskId = focusTimerState.taskId
+                    if (activeTaskId != null) {
+                        val activeTask = weeklyTasks.find { it.id == activeTaskId }
+                        if (activeTask != null) {
+                            taskToEdit = activeTask
+                        } else {
+                            coroutineScope.launch {
+                                val found = viewModel.getTaskById(activeTaskId).firstOrNull()
+                                if (found != null) {
+                                    taskToEdit = found
+                                }
+                            }
+                        }
+                    }
+                }
+            )
+
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp)
+            ) {
             if (dayTasks.isEmpty()) {
                 item {
                     Column(
@@ -153,6 +196,17 @@ fun WeeklyTasksScreen(
                         onClick = { taskToEdit = task },
                         onDelete = { viewModel.deleteTask(task) },
                         onSnooze = { viewModel.snoozeTaskToTomorrow(task) },
+                        onFocusClick = {
+                            if (focusTimerState.taskId == task.id) {
+                                if (focusTimerState.isRunning) viewModel.pauseFocusTimer()
+                                else viewModel.resumeFocusTimer()
+                            } else {
+                                viewModel.startFocusTimer(task)
+                            }
+                        },
+                        isFocusRunning = focusTimerState.taskId == task.id && focusTimerState.isRunning,
+                        isFocusActive = focusTimerState.taskId == task.id,
+                        focusElapsedSeconds = focusTimerElapsedSeconds,
                         projectName = task.projectId?.let { projectsMap[it]?.name },
                         swipeRightAction = swipeRightAction,
                         swipeLeftAction = swipeLeftAction,
@@ -162,4 +216,5 @@ fun WeeklyTasksScreen(
             }
         }
     }
+}
 }

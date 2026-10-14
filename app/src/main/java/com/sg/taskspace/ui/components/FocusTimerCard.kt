@@ -36,6 +36,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sg.taskspace.data.Task
+import com.sg.taskspace.ui.theme.PriorityMedium
+import com.sg.taskspace.ui.theme.SecondaryEmerald
 import com.sg.taskspace.util.FocusTimerManager
 
 @Composable
@@ -212,18 +214,25 @@ fun FocusTimerCard(
                                     .size(10.dp)
                                     .clip(CircleShape)
                                     .background(
-                                        if (isTimerRunningForThisTask) MaterialTheme.colorScheme.primary
-                                        else MaterialTheme.colorScheme.outline
+                                        if (isTimerRunningForThisTask) SecondaryEmerald
+                                        else PriorityMedium
                                     )
                                     .alpha(if (isTimerRunningForThisTask) pulseAlpha else 1f)
                             )
-                            Text(
-                                text = if (isTimerRunningForThisTask) "RUNNING" else "PAUSED",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isTimerRunningForThisTask) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.outline
-                            )
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = if (isTimerRunningForThisTask) SecondaryEmerald.copy(alpha = 0.15f)
+                                        else PriorityMedium.copy(alpha = 0.18f)
+                            ) {
+                                Text(
+                                    text = if (isTimerRunningForThisTask) "RUNNING" else "PAUSED",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isTimerRunningForThisTask) SecondaryEmerald else PriorityMedium,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    fontSize = 11.sp
+                                )
+                            }
                         }
 
                         // Jitter-free Monospace Tabular Figures
@@ -251,76 +260,126 @@ fun FocusTimerCard(
                     if (isTimerRunningForThisTask) {
                         OutlinedButton(
                             onClick = onPauseTimer,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp)
+                            modifier = Modifier.weight(1f).height(40.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
                         ) {
                             Icon(Icons.Default.Pause, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Pause")
+                            Text("Pause", fontWeight = FontWeight.SemiBold)
                         }
                     } else {
                         FilledTonalButton(
                             onClick = onResumeTimer,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp)
+                            modifier = Modifier.weight(1f).height(40.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = PriorityMedium.copy(alpha = 0.18f),
+                                contentColor = PriorityMedium
+                            )
                         ) {
                             Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Resume")
+                            Text("Resume", fontWeight = FontWeight.Bold)
                         }
                     }
 
                     Button(
                         onClick = onStopTimer,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).height(40.dp),
                         shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         )
                     ) {
                         Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Finish & Log")
+                        Text("Finish", fontWeight = FontWeight.SemiBold)
                     }
 
-                    IconButton(
+                    FilledTonalIconButton(
                         onClick = onDiscardTimer,
-                        modifier = Modifier.size(36.dp)
+                        modifier = Modifier.size(40.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     ) {
                         Icon(
                             Icons.Default.Close,
                             contentDescription = "Discard timer",
-                            tint = MaterialTheme.colorScheme.outline,
                             modifier = Modifier.size(18.dp)
                         )
                     }
                 }
             } else {
                 if (activeOnOtherTask) {
-                    Text(
-                        text = "A focus session is currently running on another task.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline
-                    )
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.4f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f),
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.HourglassBottom,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.tertiary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Another session active",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                                Text(
+                                    text = "Starting here will save & switch focus to this task.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.85f),
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
                 }
 
                 Button(
                     onClick = onStartTimer,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     )
                 ) {
                     Icon(
                         imageVector = Icons.Default.PlayArrow,
                         contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = if (task.trackedMinutes > 0) "Continue Focus Session" else "Start Focus Timer",
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp
                     )
                 }
             }

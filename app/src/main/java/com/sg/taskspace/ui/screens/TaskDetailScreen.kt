@@ -326,7 +326,13 @@ fun TaskDetailScreen(
                         onPauseTimer = { viewModel.pauseFocusTimer() },
                         onResumeTimer = { viewModel.resumeFocusTimer() },
                         onStopTimer = { viewModel.stopFocusTimer(task!!) },
-                        onDiscardTimer = { viewModel.discardFocusTimer() },
+                        onDiscardTimer = {
+                            if (focusTimerElapsedSeconds >= 5L) {
+                                viewModel.stopFocusTimer(task!!)
+                            } else {
+                                viewModel.discardFocusTimer()
+                            }
+                        },
                         onEditTrackedMinutes = { mins -> viewModel.updateTaskTrackedMinutes(task!!, mins) }
                     )
                 }

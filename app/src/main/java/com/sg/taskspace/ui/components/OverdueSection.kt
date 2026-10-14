@@ -42,6 +42,10 @@ fun OverdueSection(
     swipeRightAction: String = "Complete",
     swipeLeftAction: String = "Delete",
     soundEffectsEnabled: Boolean = true,
+    onFocusClick: ((Task) -> Unit)? = null,
+    activeFocusTaskId: String? = null,
+    isFocusRunning: Boolean = false,
+    focusElapsedSeconds: Long = 0L,
     modifier: Modifier = Modifier
 ) {
     if (overdueTasks.isEmpty()) return
@@ -185,6 +189,10 @@ fun OverdueSection(
                             onClick = { onTaskClick(task) },
                             onDelete = { onDeleteTask(task) },
                             onMoveToToday = { onMoveTaskToToday(task) },
+                            onFocusClick = onFocusClick?.let { { it(task) } },
+                            isFocusRunning = activeFocusTaskId == task.id && isFocusRunning,
+                            isFocusActive = activeFocusTaskId == task.id,
+                            focusElapsedSeconds = focusElapsedSeconds,
                             isOverdue = true,
                             overdueLabel = formatOverdueDays(task.createdForDate),
                             projectName = task.projectId?.let { projectsMap[it]?.name },

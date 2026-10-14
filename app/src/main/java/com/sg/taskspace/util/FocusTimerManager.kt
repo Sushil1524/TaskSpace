@@ -146,7 +146,8 @@ object FocusTimerManager {
         val taskId = current.taskId ?: return null
         val totalSec = computeElapsedSeconds(current)
         val minutesToAdd = when {
-            totalSec < 30L -> 0
+            totalSec < 5L -> 0
+            totalSec < 60L -> 1
             else -> Math.round(totalSec.toDouble() / 60.0).toInt().coerceAtLeast(1)
         }
 

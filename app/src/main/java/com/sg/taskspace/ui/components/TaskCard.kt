@@ -18,6 +18,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.EventBusy
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material.icons.filled.Timer
@@ -52,7 +54,10 @@ import com.sg.taskspace.ui.theme.PriorityLowContainer
 import com.sg.taskspace.ui.theme.PriorityMedium
 import com.sg.taskspace.ui.theme.PriorityMediumContainer
 import com.sg.taskspace.ui.theme.SecondaryEmerald
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import com.sg.taskspace.util.AudioHapticHelper
+import com.sg.taskspace.util.FocusTimerManager
 import com.sg.taskspace.util.TagStyleHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,6 +69,10 @@ fun TaskCard(
     onDelete: () -> Unit,
     onSnooze: (() -> Unit)? = null,
     onMoveToToday: (() -> Unit)? = null,
+    onFocusClick: (() -> Unit)? = null,
+    isFocusRunning: Boolean = false,
+    isFocusActive: Boolean = false,
+    focusElapsedSeconds: Long = 0L,
     isOverdue: Boolean = false,
     overdueLabel: String? = null,
     projectName: String? = null,
@@ -498,6 +507,54 @@ fun TaskCard(
                                     contentDescription = "Move to Today",
                                     modifier = Modifier.size(17.dp)
                                 )
+                            }
+                            Spacer(modifier = Modifier.width(4.dp))
+                        }
+
+                        if (onFocusClick != null && !task.isCompleted) {
+                            if (isFocusActive) {
+                                val liveFormatted = FocusTimerManager.formatSeconds(focusElapsedSeconds)
+                                FilledTonalButton(
+                                    onClick = onFocusClick,
+                                    modifier = Modifier.height(34.dp),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.primary
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = if (isFocusRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                        contentDescription = if (isFocusRunning) "Pause Focus" else "Resume Focus",
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = liveFormatted,
+                                        style = TextStyle(
+                                            fontFamily = FontFamily.Monospace,
+                                            fontFeatureSettings = "tnum",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 11.sp
+                                        )
+                                    )
+                                }
+                            } else {
+                                FilledTonalIconButton(
+                                    onClick = onFocusClick,
+                                    modifier = Modifier.size(34.dp),
+                                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                        contentColor = MaterialTheme.colorScheme.primary
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PlayArrow,
+                                        contentDescription = "Start Focus Timer",
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
                             }
                             Spacer(modifier = Modifier.width(4.dp))
                         }

@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -306,7 +307,20 @@ class TaskViewModel(
     val focusTimerElapsedSeconds: StateFlow<Long> = com.sg.taskspace.util.FocusTimerManager.elapsedSeconds
 
     fun startFocusTimer(task: Task) {
-        com.sg.taskspace.util.FocusTimerManager.startTimer(task.id, task.title)
+        viewModelScope.launch {
+            val currentState = com.sg.taskspace.util.FocusTimerManager.timerState.value
+            if (currentState.taskId != null && currentState.taskId != task.id) {
+                // Auto-save previous task session before switching
+                val prevResult = com.sg.taskspace.util.FocusTimerManager.stopTimer()
+                if (prevResult != null && prevResult.second > 0) {
+                    val prevTask = taskRepository.getTaskById(prevResult.first).firstOrNull()
+                    if (prevTask != null) {
+                        taskRepository.updateTask(prevTask.copy(trackedMinutes = prevTask.trackedMinutes + prevResult.second))
+                    }
+                }
+            }
+            com.sg.taskspace.util.FocusTimerManager.startTimer(task.id, task.title)
+        }
     }
 
     fun pauseFocusTimer() {
@@ -317,15 +331,35 @@ class TaskViewModel(
         com.sg.taskspace.util.FocusTimerManager.resumeTimer()
     }
 
-    fun stopFocusTimer(task: Task) {
+    fun stopFocusTimer(
+        task: Task? = null,
+        onLogged: ((taskTitle: String, minutes: Int) -> Unit)? = null
+    ) {
         viewModelScope.launch {
+            val currentState = com.sg.taskspace.util.FocusTimerManager.timerState.value
+            val activeTaskId = currentState.taskId ?: task?.id ?: return@launch
+            val fallbackTitle = currentState.taskTitle.ifBlank { task?.title ?: "" }
             val result = com.sg.taskspace.util.FocusTimerManager.stopTimer()
-            if (result != null && result.second > 0) {
-                val newTracked = task.trackedMinutes + result.second
-                val updated = task.copy(trackedMinutes = newTracked)
-                taskRepository.updateTask(updated)
+            if (result != null) {
+                val taskId = result.first
+                val minutesToAdd = result.second
+                val dbTask = taskRepository.getTaskById(taskId).firstOrNull() ?: task
+                if (dbTask != null) {
+                    if (minutesToAdd > 0) {
+                        val newTracked = dbTask.trackedMinutes + minutesToAdd
+                        val updated = dbTask.copy(trackedMinutes = newTracked)
+                        taskRepository.updateTask(updated)
+                    }
+                    onLogged?.invoke(dbTask.title, minutesToAdd)
+                } else if (minutesToAdd > 0) {
+                    onLogged?.invoke(fallbackTitle.ifBlank { "Task" }, minutesToAdd)
+                }
             }
         }
+    }
+
+    fun stopFocusTimer(onLogged: (taskTitle: String, minutes: Int) -> Unit) {
+        stopFocusTimer(task = null, onLogged = onLogged)
     }
 
     fun discardFocusTimer() {
