@@ -19,6 +19,7 @@ fun AddTaskBottomSheet(
     var priority by remember { mutableStateOf("Medium") }
     var category by remember { mutableStateOf("General") }
     var repeat by remember { mutableStateOf("None") }
+    var repeatDayOfWeek by remember { mutableStateOf<String?>(null) }
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
@@ -88,6 +89,13 @@ fun AddTaskBottomSheet(
                     )
                 }
             }
+
+            RecurrencePreviewCard(
+                startDate = java.time.LocalDate.now(),
+                repeat = repeat,
+                repeatDayOfWeek = repeatDayOfWeek,
+                onRepeatDayOfWeekChange = { repeatDayOfWeek = it }
+            )
 
             Button(
                 onClick = {

@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material.icons.filled.Timer
@@ -376,6 +377,37 @@ fun TaskCard(
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             fontSize = 10.sp
                                         )
+                                    }
+
+                                    // Recurrence chip
+                                    if (task.repeat != "None") {
+                                        val repeatLabel = if (task.repeat == "Weekly") {
+                                            task.repeatDayOfWeek?.take(3) ?: "Weekly"
+                                        } else "Daily"
+                                        Surface(
+                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                            shape = RoundedCornerShape(6.dp)
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Repeat,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(10.dp),
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+                                                Text(
+                                                    text = repeatLabel,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                            }
+                                        }
                                     }
 
                                     // Project Chip

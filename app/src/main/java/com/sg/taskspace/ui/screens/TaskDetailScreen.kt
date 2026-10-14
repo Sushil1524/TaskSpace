@@ -295,7 +295,11 @@ fun TaskDetailScreen(
                     }
 
                     if (task!!.repeat != "None") {
-                        DetailInfoRow(icon = Icons.Default.Repeat, label = "Repeat", value = task!!.repeat)
+                        DetailInfoRow(
+                            icon = Icons.Default.Repeat,
+                            label = "Repeat",
+                            value = com.sg.taskspace.util.RecurrenceHelper.formatRecurrenceRule(task!!.repeat, task!!.repeatDayOfWeek)
+                        )
                     }
 
                     if (task!!.isCompleted) {
@@ -305,6 +309,13 @@ fun TaskDetailScreen(
                             value = "Completed ✓",
                             valueColor = PriorityLow
                         )
+                    }
+                }
+
+                // ── Recurring Schedule Inspector ──
+                if (task!!.repeat != "None") {
+                    Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) {
+                        com.sg.taskspace.ui.components.RecurringScheduleInspectorCard(task = task!!)
                     }
                 }
 

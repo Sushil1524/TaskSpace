@@ -68,6 +68,7 @@ fun TaskDetailDialog(
     var editedProjectId by remember { mutableStateOf(task.projectId) }
     var editedTags by remember { mutableStateOf(task.tags) }
     var editedRepeat by remember { mutableStateOf(task.repeat) }
+    var editedRepeatDayOfWeek by remember { mutableStateOf(task.repeatDayOfWeek) }
     var editedEstimatedMinutes by remember { mutableStateOf(task.estimatedMinutes) }
     var editedTrackedMinutes by remember { mutableStateOf(task.trackedMinutes) }
     var editedTime by remember { mutableStateOf(task.time) }
@@ -375,21 +376,26 @@ fun TaskDetailDialog(
                             }
                         }
 
-                        // Repeat Schedule & Duration Side-by-Side Options
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                SectionHeader("Repeat")
-                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    listOf("None", "Daily", "Weekly").forEach { r ->
-                                        FilterChip(
-                                            selected = editedRepeat == r,
-                                            onClick = { editedRepeat = r },
-                                            label = { Text(r, fontSize = 11.sp) },
-                                            shape = RoundedCornerShape(8.dp)
-                                        )
-                                    }
+                        // Repeat Schedule & Dynamic Recurrence Preview
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SectionHeader("Repeat")
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                listOf("None", "Daily", "Weekly").forEach { r ->
+                                    FilterChip(
+                                        selected = editedRepeat == r,
+                                        onClick = { editedRepeat = r },
+                                        label = { Text(r, fontSize = 11.sp) },
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
                                 }
                             }
+
+                            RecurrencePreviewCard(
+                                startDate = editedDate,
+                                repeat = editedRepeat,
+                                repeatDayOfWeek = editedRepeatDayOfWeek,
+                                onRepeatDayOfWeekChange = { editedRepeatDayOfWeek = it }
+                            )
                         }
 
                         // Estimated Duration
@@ -610,8 +616,17 @@ fun TaskDetailDialog(
                             }
 
                             if (task.repeat != "None") {
-                                InfoItem(icon = Icons.Default.Repeat, label = "Recurrence", value = task.repeat)
+                                InfoItem(
+                                    icon = Icons.Default.Repeat,
+                                    label = "Recurrence",
+                                    value = com.sg.taskspace.util.RecurrenceHelper.formatRecurrenceRule(task.repeat, task.repeatDayOfWeek)
+                                )
                             }
+                        }
+
+                        // ── Recurring Schedule Inspector ──
+                        if (task.repeat != "None") {
+                            RecurringScheduleInspectorCard(task = task)
                         }
 
                         // Tags List
@@ -749,6 +764,7 @@ fun TaskDetailDialog(
                                         tags = editedTags,
                                         createdForDate = editedDate.format(DateTimeFormatter.ISO_DATE),
                                         repeat = editedRepeat,
+                                        repeatDayOfWeek = if (editedRepeat == "Weekly") (editedRepeatDayOfWeek ?: task.repeatDayOfWeek) else null,
                                         estimatedMinutes = editedEstimatedMinutes,
                                         trackedMinutes = editedTrackedMinutes,
                                         time = editedTime

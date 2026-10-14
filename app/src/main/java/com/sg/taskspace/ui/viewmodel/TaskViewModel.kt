@@ -733,10 +733,15 @@ class TaskViewModel(
         estimatedMinutes: Int = 0,
         projectId: String? = null,
         tags: String = "",
-        time: String? = null
+        time: String? = null,
+        repeatDayOfWeek: String? = null
     ) {
         viewModelScope.launch {
             val targetDate = date ?: _selectedDate.value
+            val effectiveRepeatDay = if (repeat == "Weekly") {
+                repeatDayOfWeek ?: targetDate.dayOfWeek.name.lowercase().replaceFirstChar { it.uppercase() }
+            } else null
+
             val task = Task(
                 title = title,
                 notes = notes,
@@ -744,6 +749,7 @@ class TaskViewModel(
                 category = category,
                 createdForDate = targetDate.format(DateTimeFormatter.ISO_DATE),
                 repeat = repeat,
+                repeatDayOfWeek = effectiveRepeatDay,
                 estimatedMinutes = estimatedMinutes,
                 projectId = projectId,
                 tags = tags,

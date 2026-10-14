@@ -47,6 +47,7 @@ fun AddTaskScreen(
     var priority by remember { mutableStateOf("Medium") }
     var category by remember { mutableStateOf("General") }
     var repeat by remember { mutableStateOf("None") }
+    var repeatDayOfWeek by remember { mutableStateOf<String?>(null) }
     var estimatedMinutes by remember { mutableIntStateOf(0) }
     var customMinutes by remember { mutableStateOf("") }
     var showCustomTime by remember { mutableStateOf(false) }
@@ -432,6 +433,14 @@ fun AddTaskScreen(
                 }
             }
 
+            // Dynamic Recurrence Preview Card
+            com.sg.taskspace.ui.components.RecurrencePreviewCard(
+                startDate = java.time.LocalDate.now(),
+                repeat = repeat,
+                repeatDayOfWeek = repeatDayOfWeek,
+                onRepeatDayOfWeekChange = { repeatDayOfWeek = it }
+            )
+
             // Save Button (bottom CTA)
             Spacer(modifier = Modifier.height(8.dp))
             Button(
@@ -452,7 +461,8 @@ fun AddTaskScreen(
                             estimatedMinutes = finalMinutes,
                             tags = selectedTags.joinToString(","),
                             projectId = selectedProjectId,
-                            time = effectiveTime
+                            time = effectiveTime,
+                            repeatDayOfWeek = if (repeat == "Weekly") repeatDayOfWeek else null
                         )
                         onNavigateBack()
                     }
