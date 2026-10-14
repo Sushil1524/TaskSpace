@@ -46,6 +46,12 @@ object ReportExporter {
             builder.appendLine("- Best Day of Week: ${insightsData.bestDayOfWeek}")
             builder.appendLine("- Total Planned Workload: ${insightsData.totalEstimatedMinutes / 60}h ${insightsData.totalEstimatedMinutes % 60}m")
             builder.appendLine("- Completed Workload: ${insightsData.completedEstimatedMinutes / 60}h ${insightsData.completedEstimatedMinutes % 60}m")
+            builder.appendLine("- Total Focus Time Logged: ${insightsData.totalTrackedMinutes / 60}h ${insightsData.totalTrackedMinutes % 60}m")
+            builder.appendLine("- Focus on Completed Tasks: ${insightsData.completedTrackedMinutes / 60}h ${insightsData.completedTrackedMinutes % 60}m")
+            builder.appendLine("- Daily Focus Average: ${insightsData.avgDailyFocusMinutes}m/day")
+            if (insightsData.topFocusedTasks.isNotEmpty()) {
+                builder.appendLine("- Top Focused Task: '${insightsData.topFocusedTasks.first().title}' (${insightsData.topFocusedTasks.first().trackedMinutes}m)")
+            }
         } else {
             builder.appendLine("No task data recorded for this month.")
         }
@@ -152,11 +158,11 @@ object ReportExporter {
         val builder = StringBuilder()
 
         builder.appendLine("=== TASKS ===")
-        builder.appendLine("Title,Category,Priority,DueDate,Time,EstimatedMinutes,Completed")
+        builder.appendLine("Title,Category,Priority,DueDate,Time,EstimatedMinutes,TrackedMinutes,Completed")
         tasks.forEach { task ->
             val cleanTitle = task.title.replace("\"", "\"\"")
             val cleanCat = task.category.replace("\"", "\"\"")
-            builder.appendLine("\"$cleanTitle\",\"$cleanCat\",${task.priority},\"${task.createdForDate}\",\"${task.time ?: ""}\",${task.estimatedMinutes},${task.isCompleted}")
+            builder.appendLine("\"$cleanTitle\",\"$cleanCat\",${task.priority},\"${task.createdForDate}\",\"${task.time ?: ""}\",${task.estimatedMinutes},${task.trackedMinutes},${task.isCompleted}")
         }
 
         builder.appendLine()

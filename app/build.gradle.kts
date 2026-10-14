@@ -22,8 +22,8 @@ android {
         applicationId = "com.sg.taskspace"
         minSdk = 26
         targetSdk = 36
-        versionCode = 5
-        versionName = "1.4.2.3"
+        versionCode = 6
+        versionName = "1.4.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

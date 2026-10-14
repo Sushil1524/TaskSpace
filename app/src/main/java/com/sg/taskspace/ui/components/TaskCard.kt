@@ -60,7 +60,7 @@ import com.sg.taskspace.util.AudioHapticHelper
 import com.sg.taskspace.util.FocusTimerManager
 import com.sg.taskspace.util.TagStyleHelper
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun TaskCard(
     task: Task,
@@ -316,9 +316,9 @@ fun TaskCard(
 
                             if (!task.isCompleted) {
                                 Spacer(modifier = Modifier.height(6.dp))
-                                Row(
+                                FlowRow(
                                     horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
                                     // Overdue chip
                                     if (isOverdue) {
@@ -491,6 +491,10 @@ fun TaskCard(
                                     }
                                 }
                             }
+                        }
+
+                        if (!task.isCompleted && (onMoveToToday != null || onFocusClick != null)) {
+                            Spacer(modifier = Modifier.width(6.dp))
                         }
 
                         if (onMoveToToday != null && !task.isCompleted) {

@@ -747,43 +747,277 @@ fun InsightsScreen(
                     }
                 }
 
-                // ── Daily Workload & Time Estimates ──
-                InsightSectionHeader("Daily Workload & Time Estimates", Icons.Default.Schedule)
+                // ── Focus Time & Workload Analytics ──
+                InsightSectionHeader("Focus Time & Workload Analytics", Icons.Default.Timer)
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     shape = RoundedCornerShape(16.dp)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        // Top Grid: 3 Hero Metrics
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Column(horizontalAlignment = Alignment.Start) {
-                                Text("Total Planned", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(formatEstimatedMinutes(data.totalEstimatedMinutes), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Icon(
+                                        imageVector = Icons.Default.Timer,
+                                        contentDescription = null,
+                                        tint = SecondaryEmerald,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Text("Focus Tracked", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = formatEstimatedMinutes(data.totalTrackedMinutes),
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = if (data.totalTrackedMinutes > 0) SecondaryEmerald else MaterialTheme.colorScheme.onSurface
+                                )
                             }
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("Completed", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(formatEstimatedMinutes(data.completedEstimatedMinutes), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = SecondaryEmerald)
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Icon(
+                                        imageVector = Icons.Default.Schedule,
+                                        contentDescription = null,
+                                        tint = PrimaryIndigo,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Text("Planned Work", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = formatEstimatedMinutes(data.totalEstimatedMinutes),
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = PrimaryIndigo
+                                )
                             }
                             Column(horizontalAlignment = Alignment.End) {
-                                Text("Avg Workload", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text("${formatEstimatedMinutes(data.avgDailyWorkloadMinutes)}/day", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = PrimaryIndigo)
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Icon(
+                                        imageVector = Icons.Default.HourglassBottom,
+                                        contentDescription = null,
+                                        tint = PriorityMedium,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Text("Daily Focus Avg", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "${formatEstimatedMinutes(data.avgDailyFocusMinutes)}/day",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = PriorityMedium
+                                )
                             }
                         }
 
-                        val timeRate = if (data.totalEstimatedMinutes > 0) (data.completedEstimatedMinutes.toFloat() / data.totalEstimatedMinutes).coerceIn(0f, 1f) else 0f
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("Time Completion Rate", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text("${(timeRate * 100).toInt()}%", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        HorizontalDivider(
+                            modifier = Modifier.fillMaxWidth(),
+                            thickness = 1.dp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                        )
+
+                        // 1. Focus vs. Plan Ratio Comparison
+                        val focusRatioPct = if (data.totalEstimatedMinutes > 0) {
+                            ((data.totalTrackedMinutes.toFloat() / data.totalEstimatedMinutes.toFloat()) * 100).toInt()
+                        } else 0
+                        val progressFraction = (data.focusEfficiencyRatio).coerceIn(0f, 1f)
+
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Focus vs. Planned Ratio",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = if (data.totalEstimatedMinutes > 0) "$focusRatioPct% of estimated" else "No planned workload set",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (focusRatioPct >= 100) SecondaryEmerald else MaterialTheme.colorScheme.primary
+                                )
                             }
                             LinearProgressIndicator(
-                                progress = { timeRate },
-                                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
-                                color = SecondaryEmerald,
+                                progress = { if (data.totalEstimatedMinutes > 0) progressFraction else 0f },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(8.dp)
+                                    .clip(RoundedCornerShape(4.dp)),
+                                color = if (focusRatioPct > 100) PriorityMedium else SecondaryEmerald,
                                 trackColor = MaterialTheme.colorScheme.surface
                             )
+                        }
+
+                        // 2. Secondary stats row: Completed Tasks breakdown
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                                modifier = Modifier.weight(1f).padding(end = 4.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text("Focus on Done Tasks", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(
+                                        text = formatEstimatedMinutes(data.completedTrackedMinutes),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = SecondaryEmerald
+                                    )
+                                }
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                                modifier = Modifier.weight(1f).padding(start = 4.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text("Planned on Done Tasks", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(
+                                        text = formatEstimatedMinutes(data.completedEstimatedMinutes),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = PrimaryIndigo
+                                    )
+                                }
+                            }
+                        }
+
+                        // 3. Category Focus Distribution
+                        if (data.focusByCategory.isNotEmpty()) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    text = "Focus Duration by Category",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                data.focusByCategory.entries.take(5).forEachIndexed { index, (cat, trackedMin) ->
+                                    val catFraction = if (data.totalTrackedMinutes > 0) trackedMin.toFloat() / data.totalTrackedMinutes else 0f
+                                    val color = categoryColors[index % categoryColors.size]
+                                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(color))
+                                                Text(cat, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+                                            }
+                                            Text(
+                                                text = "${formatEstimatedMinutes(trackedMin)} (${(catFraction * 100).toInt()}%)",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = color
+                                            )
+                                        }
+                                        LinearProgressIndicator(
+                                            progress = { catFraction },
+                                            modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+                                            color = color,
+                                            trackColor = MaterialTheme.colorScheme.surface
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // 4. Top Focused Tasks Deep-Dive
+                        if (data.topFocusedTasks.isNotEmpty()) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    text = "Top Focused Tasks",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                data.topFocusedTasks.forEach { task ->
+                                    Surface(
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = MaterialTheme.colorScheme.surface,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.weight(1f),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = if (task.isCompleted) Icons.Default.CheckCircle else Icons.Default.Timer,
+                                                    contentDescription = null,
+                                                    tint = if (task.isCompleted) SecondaryEmerald else MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(
+                                                        text = task.title,
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        maxLines = 1,
+                                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                                    )
+                                                    if (task.category.isNotBlank()) {
+                                                        Text(
+                                                            text = task.category,
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                            fontSize = 10.sp
+                                                        )
+                                                    }
+                                                }
+                                            }
+
+                                            Surface(
+                                                shape = RoundedCornerShape(6.dp),
+                                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                ) {
+                                                    Text(
+                                                        text = formatEstimatedMinutes(task.trackedMinutes),
+                                                        style = androidx.compose.ui.text.TextStyle(
+                                                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                                            fontFeatureSettings = "tnum",
+                                                            fontSize = 11.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = MaterialTheme.colorScheme.primary
+                                                        )
+                                                    )
+                                                    if (task.estimatedMinutes > 0) {
+                                                        Text(
+                                                            text = "/ ${formatEstimatedMinutes(task.estimatedMinutes)}",
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            fontSize = 10.sp,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }

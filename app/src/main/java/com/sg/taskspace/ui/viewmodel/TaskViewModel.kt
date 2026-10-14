@@ -545,6 +545,12 @@ class TaskViewModel(
         val totalEstimatedMinutes: Int = 0,
         val completedEstimatedMinutes: Int = 0,
         val avgDailyWorkloadMinutes: Int = 0,
+        val totalTrackedMinutes: Int = 0,
+        val completedTrackedMinutes: Int = 0,
+        val avgDailyFocusMinutes: Int = 0,
+        val focusEfficiencyRatio: Float = 0f,
+        val topFocusedTasks: List<Task> = emptyList(),
+        val focusByCategory: Map<String, Int> = emptyMap(),
         val projectDistribution: Map<String, Pair<Int, Int>> = emptyMap() // ProjectId -> (Total, Completed)
     )
 
@@ -625,11 +631,27 @@ class TaskViewModel(
                         if (total > 0) completed.toFloat() / total else 1f // If 0 tasks, ignore (shouldn't happen due to filter)
                     }?.key?.ifEmpty { "Uncategorized" } ?: "None"
 
-                // 6. Time Estimates & Workload Analytics
+                // 6. Time Estimates & Focus Workload Analytics
                 val totalEstMin = allMonthTasks.sumOf { it.estimatedMinutes }
                 val completedEstMin = allMonthTasks.filter { it.isCompleted }.sumOf { it.estimatedMinutes }
+                val totalTrackedMin = allMonthTasks.sumOf { it.trackedMinutes }
+                val completedTrackedMin = allMonthTasks.filter { it.isCompleted }.sumOf { it.trackedMinutes }
                 val daysInMonth = endOfMonth.dayOfMonth
                 val avgDailyWorkload = if (daysInMonth > 0) totalEstMin / daysInMonth else 0
+                val avgDailyFocus = if (daysInMonth > 0) totalTrackedMin / daysInMonth else 0
+                val focusRatio = if (totalEstMin > 0) (totalTrackedMin.toFloat() / totalEstMin.toFloat()) else 0f
+
+                val topFocused = allMonthTasks.filter { it.trackedMinutes > 0 }
+                    .distinctBy { it.id }
+                    .sortedByDescending { it.trackedMinutes }
+                    .take(4)
+
+                val focusByCat = allMonthTasks.filter { it.trackedMinutes > 0 }
+                    .groupBy { it.category.ifBlank { "Uncategorized" } }
+                    .mapValues { entry -> entry.value.sumOf { it.trackedMinutes } }
+                    .toList()
+                    .sortedByDescending { it.second }
+                    .toMap()
 
                 // 7. Project Distribution
                 val projectDist = allMonthTasks.filter { !it.projectId.isNullOrBlank() }
@@ -647,11 +669,17 @@ class TaskViewModel(
                     totalEstimatedMinutes = totalEstMin,
                     completedEstimatedMinutes = completedEstMin,
                     avgDailyWorkloadMinutes = avgDailyWorkload,
+                    totalTrackedMinutes = totalTrackedMin,
+                    completedTrackedMinutes = completedTrackedMin,
+                    avgDailyFocusMinutes = avgDailyFocus,
+                    focusEfficiencyRatio = focusRatio,
+                    topFocusedTasks = topFocused,
+                    focusByCategory = focusByCat,
                     projectDistribution = projectDist
                 )
             } catch (e: Exception) {
                 e.printStackTrace()
-                InsightsData(0, 0, 0, "Error", 0, emptyMap(), "Error", 0, 0, 0, emptyMap())
+                InsightsData(0, 0, 0, "Error", 0, emptyMap(), "Error", 0, 0, 0, 0, 0, 0, 0f, emptyList(), emptyMap(), emptyMap())
             }
         }
     }

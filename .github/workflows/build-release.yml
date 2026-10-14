@@ -35,7 +35,7 @@ jobs:
           STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: ./gradlew assembleRelease -PBACKUP_SECRET_KEY="${{ secrets.BACKUP_SECRET_KEY }}"
+        run: ./gradlew assembleRelease -PBACKUP_SECRET_KEY="${{ secrets.BACKUP_SECRET_KEY }}" -Pkotlin.incremental=false
       
       - name: Prepare & Sign APK
         run: |
