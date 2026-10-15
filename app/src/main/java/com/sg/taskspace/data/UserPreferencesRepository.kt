@@ -32,6 +32,7 @@ class UserPreferencesRepository(private val context: Context) {
         val IS_SECURE_BACKUP_ENABLED = booleanPreferencesKey("is_secure_backup_enabled")
         val AUTO_BACKUP_FREQUENCY = stringPreferencesKey("auto_backup_frequency") // "Daily", "Weekly", "Off"
         val LAST_AUTO_BACKUP_TIME = longPreferencesKey("last_auto_backup_time")
+        val LAST_AUTO_BACKUP_HASH = stringPreferencesKey("last_auto_backup_hash")
         // Notifications & Feedback
         val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
         val PERSISTENT_DAILY_DASHBOARD_ENABLED = booleanPreferencesKey("persistent_daily_dashboard_enabled")
@@ -73,6 +74,7 @@ class UserPreferencesRepository(private val context: Context) {
             val isSecureBackupEnabled = preferences[PreferencesKeys.IS_SECURE_BACKUP_ENABLED] ?: true
             val autoBackupFrequency = preferences[PreferencesKeys.AUTO_BACKUP_FREQUENCY] ?: "Daily"
             val lastAutoBackupTimeMillis = preferences[PreferencesKeys.LAST_AUTO_BACKUP_TIME] ?: 0L
+            val lastAutoBackupHash = preferences[PreferencesKeys.LAST_AUTO_BACKUP_HASH] ?: ""
             val notificationsEnabled = preferences[PreferencesKeys.NOTIFICATIONS_ENABLED] ?: false
             val persistentDailyDashboardEnabled = preferences[PreferencesKeys.PERSISTENT_DAILY_DASHBOARD_ENABLED] ?: false
             val soundEffectsEnabled = preferences[PreferencesKeys.SOUND_EFFECTS_ENABLED] ?: true
@@ -100,6 +102,7 @@ class UserPreferencesRepository(private val context: Context) {
                 isSecureBackupEnabled = isSecureBackupEnabled,
                 autoBackupFrequency = autoBackupFrequency,
                 lastAutoBackupTimeMillis = lastAutoBackupTimeMillis,
+                lastAutoBackupHash = lastAutoBackupHash,
                 notificationsEnabled = notificationsEnabled,
                 persistentDailyDashboardEnabled = persistentDailyDashboardEnabled,
                 soundEffectsEnabled = soundEffectsEnabled,
@@ -165,6 +168,19 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun updateLastAutoBackupTime(timeMillis: Long) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.LAST_AUTO_BACKUP_TIME] = timeMillis
+        }
+    }
+
+    suspend fun updateLastAutoBackup(timeMillis: Long, hash: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.LAST_AUTO_BACKUP_TIME] = timeMillis
+            preferences[PreferencesKeys.LAST_AUTO_BACKUP_HASH] = hash
+        }
+    }
+
+    suspend fun updateLastAutoBackupHash(hash: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.LAST_AUTO_BACKUP_HASH] = hash
         }
     }
 
@@ -316,6 +332,7 @@ data class UserPreferences(
     @SerializedName("isSecureBackupEnabled") val isSecureBackupEnabled: Boolean = true,
     @SerializedName("autoBackupFrequency") val autoBackupFrequency: String = "Daily",
     @SerializedName("lastAutoBackupTimeMillis") val lastAutoBackupTimeMillis: Long = 0L,
+    @SerializedName("lastAutoBackupHash") val lastAutoBackupHash: String = "",
     @SerializedName("notificationsEnabled") val notificationsEnabled: Boolean = false,
     @SerializedName("persistentDailyDashboardEnabled") val persistentDailyDashboardEnabled: Boolean = false,
     @SerializedName("soundEffectsEnabled") val soundEffectsEnabled: Boolean = true,

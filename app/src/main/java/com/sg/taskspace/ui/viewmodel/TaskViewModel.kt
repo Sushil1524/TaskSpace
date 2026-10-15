@@ -32,9 +32,13 @@ class TaskViewModel(
     private val dataTransferManager: com.sg.taskspace.data.DataTransferManager
 ) : ViewModel() {
 
+    private val _backupSnapshots = MutableStateFlow<List<com.sg.taskspace.data.BackupSnapshot>>(emptyList())
+    val backupSnapshots: StateFlow<List<com.sg.taskspace.data.BackupSnapshot>> = _backupSnapshots.asStateFlow()
+
     init {
         viewModelScope.launch {
             dataTransferManager.performAutoBackupIfNeeded()
+            loadBackupSnapshots()
         }
         checkAndApplyAppLockOnForeground()
     }
@@ -91,8 +95,50 @@ class TaskViewModel(
     ) {
         viewModelScope.launch {
             val result = dataTransferManager.importDataWithSelection(backupData, selectionConfig)
+            loadBackupSnapshots()
             withContext(Dispatchers.Main) {
                 onResult(result.isSuccess)
+            }
+        }
+    }
+
+    fun loadBackupSnapshots() {
+        viewModelScope.launch {
+            val snapshots = dataTransferManager.getAutoBackupSnapshots()
+            _backupSnapshots.value = snapshots
+        }
+    }
+
+    fun createAutoBackupSnapshot(onResult: (Result<com.sg.taskspace.data.BackupSnapshot>) -> Unit) {
+        viewModelScope.launch {
+            val result = dataTransferManager.createAutoBackupSnapshot()
+            val snapshots = dataTransferManager.getAutoBackupSnapshots()
+            _backupSnapshots.value = snapshots
+            withContext(Dispatchers.Main) {
+                onResult(result)
+            }
+        }
+    }
+
+    fun deleteSnapshot(file: java.io.File, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val success = dataTransferManager.deleteSnapshot(file)
+            val snapshots = dataTransferManager.getAutoBackupSnapshots()
+            _backupSnapshots.value = snapshots
+            withContext(Dispatchers.Main) {
+                onResult(success)
+            }
+        }
+    }
+
+    fun previewSnapshot(
+        file: java.io.File,
+        onResult: (Result<com.sg.taskspace.data.BackupDiffResult>) -> Unit
+    ) {
+        viewModelScope.launch {
+            val result = dataTransferManager.previewSnapshot(file)
+            withContext(Dispatchers.Main) {
+                onResult(result)
             }
         }
     }

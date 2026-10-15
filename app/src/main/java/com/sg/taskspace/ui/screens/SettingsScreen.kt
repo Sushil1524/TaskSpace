@@ -33,6 +33,7 @@ import androidx.core.content.ContextCompat
 import com.sg.taskspace.BuildConfig
 import com.sg.taskspace.ui.viewmodel.TaskViewModel
 import com.sg.taskspace.ui.components.BackupDiffDialog
+import com.sg.taskspace.ui.components.BackupHistoryDialog
 import com.sg.taskspace.data.BackupDiffResult
 import com.sg.taskspace.data.UserPreferences
 import com.sg.taskspace.ui.components.TaskSpaceBrandHeader
@@ -45,12 +46,15 @@ fun SettingsScreen(
     onNavigateToTrash: () -> Unit = {}
 ) {
     val userPreferences by viewModel.userPreferences.collectAsState()
+    val backupSnapshots by viewModel.backupSnapshots.collectAsState()
     val context = LocalContext.current
     var showNameDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
     var showFontDialog by remember { mutableStateOf(false) }
     var showPaletteDialog by remember { mutableStateOf(false) }
     var showAutoBackupDialog by remember { mutableStateOf(false) }
+    var showBackupHistoryDialog by remember { mutableStateOf(false) }
+    var isCreatingSnapshot by remember { mutableStateOf(false) }
     var showSwipeRightDialog by remember { mutableStateOf(false) }
     var showSwipeLeftDialog by remember { mutableStateOf(false) }
     var showPinSetupDialog by remember { mutableStateOf(false) }
@@ -144,6 +148,51 @@ fun SettingsScreen(
                     ).show()
                 }
             }
+        )
+    }
+
+    // ── Backup History & Snapshots Dialog ──
+    if (showBackupHistoryDialog) {
+        BackupHistoryDialog(
+            snapshots = backupSnapshots,
+            isCreatingSnapshot = isCreatingSnapshot,
+            onCreateSnapshot = {
+                isCreatingSnapshot = true
+                viewModel.createAutoBackupSnapshot { result ->
+                    isCreatingSnapshot = false
+                    result.fold(
+                        onSuccess = {
+                            Toast.makeText(context, "✅ Snapshot created successfully!", Toast.LENGTH_SHORT).show()
+                        },
+                        onFailure = { e ->
+                            Toast.makeText(context, "❌ Snapshot failed: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                        }
+                    )
+                }
+            },
+            onInspectAndRestore = { snapshot ->
+                viewModel.previewSnapshot(snapshot.file) { result ->
+                    result.fold(
+                        onSuccess = { diff ->
+                            showBackupHistoryDialog = false
+                            backupDiffResult = diff
+                        },
+                        onFailure = { e ->
+                            Toast.makeText(context, "Cannot read snapshot: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                        }
+                    )
+                }
+            },
+            onDeleteSnapshot = { file ->
+                viewModel.deleteSnapshot(file) { success ->
+                    Toast.makeText(
+                        context,
+                        if (success) "Snapshot deleted" else "Failed to delete snapshot",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            },
+            onDismiss = { showBackupHistoryDialog = false }
         )
     }
 
@@ -817,6 +866,16 @@ fun SettingsScreen(
                 title = "Auto Backup Frequency",
                 subtitle = userPreferences?.autoBackupFrequency ?: "Daily",
                 onClick = { showAutoBackupDialog = true },
+                trailingIcon = Icons.Default.ChevronRight
+            )
+            SettingsItem(
+                icon = Icons.Default.History,
+                title = "Backup History & Snapshots",
+                subtitle = "View, manage & restore from retention snapshots (${backupSnapshots.size} available)",
+                onClick = {
+                    viewModel.loadBackupSnapshots()
+                    showBackupHistoryDialog = true
+                },
                 trailingIcon = Icons.Default.ChevronRight
             )
             SettingsItem(

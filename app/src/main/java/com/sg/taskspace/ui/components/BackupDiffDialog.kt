@@ -20,7 +20,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -36,14 +35,10 @@ import com.sg.taskspace.data.ItemDiffType
 import com.sg.taskspace.data.RestoreSelectionConfig
 import com.sg.taskspace.data.RestoreStrategy
 
-// Color palette for diff badges
+// Semantic diff badge indicator colors
 private val DiffAddedColor = Color(0xFF22C55E)       // green-500
-private val DiffAddedBg = Color(0xFF14532D)          // green-900
 private val DiffModifiedColor = Color(0xFFF59E0B)    // amber-500
-private val DiffModifiedBg = Color(0xFF78350F)       // amber-900
 private val DiffDeletedColor = Color(0xFFEF4444)     // red-500
-private val DiffDeletedBg = Color(0xFF7F1D1D)        // red-900
-private val DiffNeutralBg = Color(0xFF1E293B)        // slate-800
 
 @Composable
 fun BackupDiffDialog(
@@ -89,8 +84,8 @@ fun BackupDiffDialog(
                         .fillMaxWidth()
                         .fillMaxHeight(0.92f),
                     shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                 ) {
                     Column(modifier = Modifier.fillMaxSize()) {
 
@@ -98,7 +93,7 @@ fun BackupDiffDialog(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(top = 12.dp),
+                                .padding(top = 12.dp, bottom = 4.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Box(
@@ -106,7 +101,7 @@ fun BackupDiffDialog(
                                     .width(40.dp)
                                     .height(4.dp)
                                     .clip(CircleShape)
-                                    .background(Color.White.copy(alpha = 0.2f))
+                                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f))
                             )
                         }
 
@@ -116,44 +111,54 @@ fun BackupDiffDialog(
                                 .verticalScroll(rememberScrollState())
                                 .padding(horizontal = 20.dp)
                         ) {
-                            Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
 
                             // ── Header ──
                             Row(
+                                modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                                horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(52.dp)
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .background(
-                                            Brush.linearGradient(
-                                                listOf(Color(0xFF6366F1), Color(0xFF8B5CF6))
-                                            )
-                                        ),
-                                    contentAlignment = Alignment.Center
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(14.dp)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Shield,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(28.dp)
-                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .clip(RoundedCornerShape(14.dp))
+                                            .background(MaterialTheme.colorScheme.primaryContainer),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Shield,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(26.dp)
+                                        )
+                                    }
+                                    Column {
+                                        Text(
+                                            text = "Selective Restore & Diff",
+                                            style = MaterialTheme.typography.titleLarge,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = if (diff.hasAnyChanges)
+                                                "${diff.totalChanges} change${if (diff.totalChanges != 1) "s" else ""} detected · Select what to keep"
+                                            else "Your data is already up to date",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
-                                Column {
-                                    Text(
-                                        text = "Selective Restore & Diff",
-                                        style = MaterialTheme.typography.titleLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White
-                                    )
-                                    Text(
-                                        text = if (diff.hasAnyChanges)
-                                            "${diff.totalChanges} change${if (diff.totalChanges != 1) "s" else ""} detected · Select what to keep"
-                                        else "Your data is already up to date",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = Color.White.copy(alpha = 0.55f)
+
+                                IconButton(onClick = { if (!isRestoring) onDismiss() }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Close",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
@@ -163,10 +168,11 @@ fun BackupDiffDialog(
                             // ── Presets Bar ──
                             Text(
                                 text = "Quick Strategy Presets:",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color.White.copy(alpha = 0.6f)
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Spacer(modifier = Modifier.height(6.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -186,10 +192,19 @@ fun BackupDiffDialog(
                                     },
                                     label = { Text("Merge All (Safe)") },
                                     colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = Color(0xFF6366F1),
-                                        selectedLabelColor = Color.White,
-                                        containerColor = DiffNeutralBg,
-                                        labelColor = Color.White.copy(alpha = 0.8f)
+                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    ),
+                                    border = FilterChipDefaults.filterChipBorder(
+                                        enabled = true,
+                                        selected = taskStrategy == RestoreStrategy.MERGE_BACKUP_WINS &&
+                                                habitStrategy == RestoreStrategy.MERGE_BACKUP_WINS &&
+                                                journalStrategy == RestoreStrategy.MERGE_BACKUP_WINS &&
+                                                goalStrategy == RestoreStrategy.MERGE_BACKUP_WINS &&
+                                                projectStrategy == RestoreStrategy.MERGE_BACKUP_WINS,
+                                        borderColor = MaterialTheme.colorScheme.outlineVariant
                                     )
                                 )
                                 FilterChip(
@@ -207,10 +222,19 @@ fun BackupDiffDialog(
                                     },
                                     label = { Text("Replace All") },
                                     colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = DiffDeletedBg,
-                                        selectedLabelColor = DiffDeletedColor,
-                                        containerColor = DiffNeutralBg,
-                                        labelColor = Color.White.copy(alpha = 0.8f)
+                                        selectedContainerColor = MaterialTheme.colorScheme.errorContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onErrorContainer,
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    ),
+                                    border = FilterChipDefaults.filterChipBorder(
+                                        enabled = true,
+                                        selected = taskStrategy == RestoreStrategy.REPLACE_LOCAL &&
+                                                habitStrategy == RestoreStrategy.REPLACE_LOCAL &&
+                                                journalStrategy == RestoreStrategy.REPLACE_LOCAL &&
+                                                goalStrategy == RestoreStrategy.REPLACE_LOCAL &&
+                                                projectStrategy == RestoreStrategy.REPLACE_LOCAL,
+                                        borderColor = MaterialTheme.colorScheme.outlineVariant
                                     )
                                 )
                                 FilterChip(
@@ -228,10 +252,19 @@ fun BackupDiffDialog(
                                     },
                                     label = { Text("Keep Local All") },
                                     colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = DiffAddedBg,
-                                        selectedLabelColor = DiffAddedColor,
-                                        containerColor = DiffNeutralBg,
-                                        labelColor = Color.White.copy(alpha = 0.8f)
+                                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    ),
+                                    border = FilterChipDefaults.filterChipBorder(
+                                        enabled = true,
+                                        selected = taskStrategy == RestoreStrategy.KEEP_LOCAL &&
+                                                habitStrategy == RestoreStrategy.KEEP_LOCAL &&
+                                                journalStrategy == RestoreStrategy.KEEP_LOCAL &&
+                                                goalStrategy == RestoreStrategy.KEEP_LOCAL &&
+                                                projectStrategy == RestoreStrategy.KEEP_LOCAL,
+                                        borderColor = MaterialTheme.colorScheme.outlineVariant
                                     )
                                 )
                             }
@@ -241,19 +274,19 @@ fun BackupDiffDialog(
                             // ── Legend ──
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 DiffLegendChip(color = DiffAddedColor, label = "Added in Backup")
                                 DiffLegendChip(color = DiffModifiedColor, label = "Modified")
                                 DiffLegendChip(color = DiffDeletedColor, label = "Missing in Backup")
                             }
 
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(14.dp))
 
                             // ── Interactive Category Rows ──
                             CategoryDiffCard(
                                 icon = Icons.Default.CheckCircle,
-                                iconTint = Color(0xFF818CF8),
+                                iconTint = MaterialTheme.colorScheme.primary,
                                 label = "Tasks",
                                 diff = diff.tasks,
                                 currentStrategy = taskStrategy,
@@ -266,7 +299,7 @@ fun BackupDiffDialog(
 
                             CategoryDiffCard(
                                 icon = Icons.Default.Loop,
-                                iconTint = Color(0xFF34D399),
+                                iconTint = MaterialTheme.colorScheme.secondary,
                                 label = "Habits",
                                 diff = diff.habits,
                                 currentStrategy = habitStrategy,
@@ -279,7 +312,7 @@ fun BackupDiffDialog(
 
                             CategoryDiffCard(
                                 icon = Icons.Default.Book,
-                                iconTint = Color(0xFFFBBF24),
+                                iconTint = MaterialTheme.colorScheme.tertiary,
                                 label = "Journal Entries",
                                 diff = diff.journalEntries,
                                 currentStrategy = journalStrategy,
@@ -292,7 +325,7 @@ fun BackupDiffDialog(
 
                             CategoryDiffCard(
                                 icon = Icons.Default.Flag,
-                                iconTint = Color(0xFFF87171),
+                                iconTint = Color(0xFFF43F5E), // Rose
                                 label = "Goals",
                                 diff = diff.goals,
                                 currentStrategy = goalStrategy,
@@ -305,7 +338,7 @@ fun BackupDiffDialog(
 
                             CategoryDiffCard(
                                 icon = Icons.Default.FolderOpen,
-                                iconTint = Color(0xFF60A5FA),
+                                iconTint = Color(0xFF38BDF8), // Sky Blue
                                 label = "Projects",
                                 diff = diff.projects,
                                 currentStrategy = projectStrategy,
@@ -322,31 +355,43 @@ fun BackupDiffDialog(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(vertical = 4.dp),
-                                    shape = RoundedCornerShape(14.dp),
-                                    color = DiffNeutralBg
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        1.dp,
+                                        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+                                    )
                                 ) {
                                     Row(
                                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Settings,
-                                            contentDescription = null,
-                                            tint = Color(0xFFC084FC),
-                                            modifier = Modifier.size(20.dp)
-                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .size(36.dp)
+                                                .clip(RoundedCornerShape(10.dp))
+                                                .background(MaterialTheme.colorScheme.primaryContainer),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Settings,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
                                         Spacer(modifier = Modifier.width(12.dp))
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(
                                                 text = "Restore App Settings & Preferences",
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 fontWeight = FontWeight.SemiBold,
-                                                color = Color.White
+                                                color = MaterialTheme.colorScheme.onSurface
                                             )
                                             Text(
                                                 text = "Theme, fonts, swipe actions & app lock PIN",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = Color.White.copy(alpha = 0.5f)
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
                                         Switch(
@@ -363,8 +408,12 @@ fun BackupDiffDialog(
                         // ── Bottom Action bar ──
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
-                            color = Color(0xFF0F172A),
-                            shadowElevation = 8.dp
+                            color = MaterialTheme.colorScheme.surface,
+                            shadowElevation = 8.dp,
+                            border = androidx.compose.foundation.BorderStroke(
+                                0.5.dp,
+                                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                            )
                         ) {
                             Row(
                                 modifier = Modifier
@@ -379,12 +428,12 @@ fun BackupDiffDialog(
                                     shape = RoundedCornerShape(14.dp),
                                     border = androidx.compose.foundation.BorderStroke(
                                         1.dp,
-                                        Color.White.copy(alpha = 0.2f)
+                                        MaterialTheme.colorScheme.outlineVariant
                                     )
                                 ) {
                                     Text(
                                         "Cancel",
-                                        color = Color.White.copy(alpha = 0.7f),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontWeight = FontWeight.SemiBold
                                     )
                                 }
@@ -405,14 +454,14 @@ fun BackupDiffDialog(
                                     modifier = Modifier.weight(1.3f),
                                     shape = RoundedCornerShape(14.dp),
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFF6366F1),
-                                        contentColor = Color.White
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        contentColor = MaterialTheme.colorScheme.onPrimary
                                     )
                                 ) {
                                     if (isRestoring) {
                                         CircularProgressIndicator(
                                             modifier = Modifier.size(18.dp),
-                                            color = Color.White,
+                                            color = MaterialTheme.colorScheme.onPrimary,
                                             strokeWidth = 2.dp
                                         )
                                     } else {
@@ -465,7 +514,7 @@ private fun DiffLegendChip(color: Color, label: String) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = Color.White.copy(alpha = 0.6f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 11.sp
         )
     }
@@ -489,8 +538,12 @@ private fun CategoryDiffCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
-        shape = RoundedCornerShape(14.dp),
-        color = DiffNeutralBg
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+        )
     ) {
         Column {
             Row(
@@ -523,25 +576,28 @@ private fun CategoryDiffCard(
                         text = label,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
 
                     // Badges
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(
+                        modifier = Modifier.padding(top = 2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
                         if (diff.added > 0) {
-                            DiffBadge(count = diff.added, color = DiffAddedColor, bg = DiffAddedBg, prefix = "+")
+                            DiffBadge(count = diff.added, color = DiffAddedColor, prefix = "+")
                         }
                         if (diff.modified > 0) {
-                            DiffBadge(count = diff.modified, color = DiffModifiedColor, bg = DiffModifiedBg, prefix = "~")
+                            DiffBadge(count = diff.modified, color = DiffModifiedColor, prefix = "~")
                         }
                         if (diff.deleted > 0) {
-                            DiffBadge(count = diff.deleted, color = DiffDeletedColor, bg = DiffDeletedBg, prefix = "-")
+                            DiffBadge(count = diff.deleted, color = DiffDeletedColor, prefix = "-")
                         }
                         if (!diff.hasChanges) {
                             Text(
                                 text = "No changes",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color.White.copy(alpha = 0.3f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                 fontSize = 11.sp
                             )
                         }
@@ -573,24 +629,42 @@ private fun CategoryDiffCard(
                         },
                         colors = AssistChipDefaults.assistChipColors(
                             containerColor = when (currentStrategy) {
-                                RestoreStrategy.MERGE_BACKUP_WINS, RestoreStrategy.MERGE_LOCAL_WINS -> Color(0xFF334155)
-                                RestoreStrategy.REPLACE_LOCAL -> DiffDeletedBg
-                                RestoreStrategy.KEEP_LOCAL -> DiffAddedBg
+                                RestoreStrategy.MERGE_BACKUP_WINS, RestoreStrategy.MERGE_LOCAL_WINS -> MaterialTheme.colorScheme.surface
+                                RestoreStrategy.REPLACE_LOCAL -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                                RestoreStrategy.KEEP_LOCAL -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
                             },
-                            labelColor = Color.White
+                            labelColor = when (currentStrategy) {
+                                RestoreStrategy.REPLACE_LOCAL -> MaterialTheme.colorScheme.onErrorContainer
+                                RestoreStrategy.KEEP_LOCAL -> MaterialTheme.colorScheme.onSecondaryContainer
+                                else -> MaterialTheme.colorScheme.onSurface
+                            }
+                        ),
+                        border = AssistChipDefaults.assistChipBorder(
+                            enabled = true,
+                            borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                         )
                     )
 
                     DropdownMenu(
                         expanded = showStrategyMenu,
-                        onDismissRequest = { showStrategyMenu = false }
+                        onDismissRequest = { showStrategyMenu = false },
+                        modifier = Modifier.background(MaterialTheme.colorScheme.surface)
                     ) {
                         RestoreStrategy.entries.forEach { strategy ->
                             DropdownMenuItem(
                                 text = {
                                     Column {
-                                        Text(strategy.label, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                                        Text(strategy.description, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text(
+                                            text = strategy.label,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 13.sp,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = strategy.description,
+                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
                                     }
                                 },
                                 onClick = {
@@ -607,7 +681,7 @@ private fun CategoryDiffCard(
                         Icon(
                             imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                             contentDescription = "Expand item list",
-                            tint = Color.White.copy(alpha = 0.6f)
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -622,14 +696,14 @@ private fun CategoryDiffCard(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color.Black.copy(alpha = 0.25f))
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     Text(
                         text = "Item-level selection (${diff.items.size} items):",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White.copy(alpha = 0.5f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 6.dp)
                     )
 
@@ -646,28 +720,29 @@ private fun CategoryDiffCard(
                                 checked = isChecked,
                                 onCheckedChange = { onToggleItem(item.id) },
                                 colors = CheckboxDefaults.colors(
-                                    checkedColor = Color(0xFF6366F1),
-                                    uncheckedColor = Color.White.copy(alpha = 0.4f)
+                                    checkedColor = MaterialTheme.colorScheme.primary,
+                                    uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                    checkmarkColor = MaterialTheme.colorScheme.onPrimary
                                 )
                             )
 
                             Text(
                                 text = item.title,
                                 fontSize = 13.sp,
-                                color = if (isChecked) Color.White else Color.White.copy(alpha = 0.4f),
+                                color = if (isChecked) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                                 modifier = Modifier.weight(1f)
                             )
 
                             // Item Diff Type Badge
-                            val (badgeColor, badgeBg, prefix) = when (item.diffType) {
-                                ItemDiffType.ADDED -> Triple(DiffAddedColor, DiffAddedBg, "+Added")
-                                ItemDiffType.MODIFIED -> Triple(DiffModifiedColor, DiffModifiedBg, "~Modified")
-                                ItemDiffType.DELETED_IN_BACKUP -> Triple(DiffDeletedColor, DiffDeletedBg, "-Deleted in backup")
+                            val (badgeColor, prefix) = when (item.diffType) {
+                                ItemDiffType.ADDED -> Pair(DiffAddedColor, "+Added")
+                                ItemDiffType.MODIFIED -> Pair(DiffModifiedColor, "~Modified")
+                                ItemDiffType.DELETED_IN_BACKUP -> Pair(DiffDeletedColor, "-Deleted in backup")
                             }
 
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
-                                color = badgeBg.copy(alpha = 0.5f)
+                                color = badgeColor.copy(alpha = 0.15f)
                             ) {
                                 Text(
                                     text = prefix,
@@ -686,10 +761,10 @@ private fun CategoryDiffCard(
 }
 
 @Composable
-private fun DiffBadge(count: Int, color: Color, bg: Color, prefix: String) {
+private fun DiffBadge(count: Int, color: Color, prefix: String) {
     Surface(
         shape = RoundedCornerShape(8.dp),
-        color = bg.copy(alpha = 0.6f)
+        color = color.copy(alpha = 0.15f)
     ) {
         Text(
             text = "$prefix$count",
