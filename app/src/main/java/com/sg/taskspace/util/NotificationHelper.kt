@@ -12,6 +12,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.RemoteInput
 import androidx.core.content.ContextCompat
 import com.sg.taskspace.MainActivity
 import com.sg.taskspace.TaskSpaceApplication
@@ -72,6 +73,8 @@ object NotificationHelper {
     const val NOTIFICATION_ID_DASHBOARD = 9999
 
     const val ACTION_ADD_TASK = "com.sg.taskspace.ACTION_ADD_TASK"
+    const val ACTION_QUICK_ADD_TASK = "com.sg.taskspace.ACTION_QUICK_ADD_TASK"
+    const val KEY_QUICK_ADD_TEXT = "key_quick_add_text"
     const val ACTION_COMPLETE_TOP_TASK = "com.sg.taskspace.ACTION_COMPLETE_TOP_TASK"
     const val ACTION_CHECK_TOP_HABIT = "com.sg.taskspace.ACTION_CHECK_TOP_HABIT"
     const val ACTION_REFRESH_DASHBOARD = "com.sg.taskspace.ACTION_REFRESH_DASHBOARD"
@@ -255,19 +258,35 @@ object NotificationHelper {
                     builder.setProgress(totalTasksCount, completedTasksCount, false)
                 }
 
-                // Action 1: Add Task
-                val addTaskIntent = Intent(context, MainActivity::class.java).apply {
-                    action = ACTION_ADD_TASK
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                    putExtra("EXTRA_NAVIGATE_TO", "add_task")
+                // Action 1: Inline Quick-Add Task with RemoteInput
+                val remoteInput = RemoteInput.Builder(KEY_QUICK_ADD_TEXT)
+                    .setLabel("Quick add (e.g. Call client !high #work)")
+                    .build()
+
+                val quickAddIntent = Intent(context, NotificationActionReceiver::class.java).apply {
+                    action = ACTION_QUICK_ADD_TASK
                 }
-                val addTaskPendingIntent = PendingIntent.getActivity(
+                val quickAddFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+                } else {
+                    PendingIntent.FLAG_UPDATE_CURRENT
+                }
+                val quickAddPendingIntent = PendingIntent.getBroadcast(
                     context,
                     101,
-                    addTaskIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    quickAddIntent,
+                    quickAddFlags
                 )
-                builder.addAction(0, "+ Add Task", addTaskPendingIntent)
+                val quickAddAction = NotificationCompat.Action.Builder(
+                    0,
+                    "+ Add Task",
+                    quickAddPendingIntent
+                )
+                    .addRemoteInput(remoteInput)
+                    .setShowsUserInterface(false)
+                    .build()
+
+                builder.addAction(quickAddAction)
 
                 // Action 2: Complete Next Task (if active task exists)
                 if (activeTasks.isNotEmpty()) {
