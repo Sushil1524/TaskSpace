@@ -28,7 +28,9 @@ import com.sg.taskspace.ui.components.AddEditHabitDialog
 import com.sg.taskspace.ui.components.HabitHeatmap
 import com.sg.taskspace.ui.viewmodel.HabitViewModel
 import java.time.DayOfWeek
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -136,7 +138,12 @@ fun HabitScreen(
                     val activeCount = habits.size
                     val todayCompleted = habits.count { h ->
                         val log = logsForSelectedDate.find { it.habitId == h.id }
-                        log?.isCompleted == true
+                        if (h.type == "QUIT") {
+                            val hasRelapse = log != null && (log.relapseNotes != null || !log.isCompleted)
+                            !hasRelapse
+                        } else {
+                            log?.isCompleted == true
+                        }
                     }
                     val completionRate = if (activeCount > 0) (todayCompleted * 100) / activeCount else 0
 
@@ -514,6 +521,11 @@ fun HabitCard(
             val today = LocalDate.now()
             val startOfWeek = today.with(DayOfWeek.MONDAY)
             val weekDays = (0..6).map { startOfWeek.plusDays(it.toLong()) }
+            val habitCreatedDate = remember(habit.createdAt) {
+                runCatching {
+                    Instant.ofEpochMilli(habit.createdAt).atZone(ZoneId.systemDefault()).toLocalDate()
+                }.getOrDefault(today)
+            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -525,10 +537,11 @@ fun HabitCard(
                     val dayLog = allHabitLogs.find { it.habitId == habit.id && it.date == dateIso }
                     val isFuture = date > today
                     val isToday = date == today
+                    val isBeforeCreation = date < habitCreatedDate
 
                     val isQuit = habit.type == "QUIT"
                     val hasRelapse = isQuit && (dayLog != null && (dayLog.relapseNotes != null || !dayLog.isCompleted))
-                    val isDone = if (isQuit) (!hasRelapse && !isFuture) else (dayLog?.isCompleted == true)
+                    val isDone = if (isQuit) (!hasRelapse && !isFuture && !isBeforeCreation) else (dayLog?.isCompleted == true)
 
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -551,7 +564,7 @@ fun HabitCard(
                                     when {
                                         hasRelapse -> MaterialTheme.colorScheme.error
                                         isDone -> habitColor
-                                        isFuture -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
+                                        isFuture || (isQuit && isBeforeCreation) -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
                                         else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
                                     }
                                 )

@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
@@ -39,6 +40,7 @@ import com.sg.taskspace.util.ReportExporter
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,6 +60,7 @@ fun InsightsScreen(
     val isCurrentMonth = currentMonth == YearMonth.now()
 
     val allTasks by viewModel.allTasks.collectAsState()
+    val overdueTasks by viewModel.overdueTasks.collectAsState()
     val habitsState = habitViewModel?.habits?.collectAsState()
     val habits: List<Habit> = habitsState?.value ?: emptyList()
 
@@ -747,6 +750,251 @@ fun InsightsScreen(
                     }
                 }
 
+                // ── Overdue Tasks Analytics ──
+                InsightSectionHeader("Overdue Tasks Analytics", Icons.Default.Warning)
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    if (overdueTasks.isEmpty()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .background(SecondaryEmerald.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = SecondaryEmerald,
+                                    modifier = Modifier.size(26.dp)
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "All Tasks On Track!",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Zero overdue tasks. Your schedule is completely up to date.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    } else {
+                        val highPriorityOverdue = overdueTasks.count { it.priority.equals("high", ignoreCase = true) }
+                        val mediumPriorityOverdue = overdueTasks.count { it.priority.equals("medium", ignoreCase = true) }
+                        val lowPriorityOverdue = overdueTasks.count { it.priority.equals("low", ignoreCase = true) }
+                        val oldestOverdueTask = overdueTasks.minByOrNull { it.createdForDate }
+                        val oldestLagDays = oldestOverdueTask?.let { task ->
+                            runCatching {
+                                ChronoUnit.DAYS.between(LocalDate.parse(task.createdForDate), LocalDate.now()).toInt().coerceAtLeast(1)
+                            }.getOrDefault(1)
+                        } ?: 0
+
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            // Top 3 metric highlights
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                InsightHighlightCard(
+                                    modifier = Modifier.weight(1f),
+                                    label = "⚠️ Overdue",
+                                    value = "${overdueTasks.size}",
+                                    subtitle = if (overdueTasks.size == 1) "1 pending" else "${overdueTasks.size} pending",
+                                    iconColor = PriorityHigh,
+                                    bgColor = PriorityHigh.copy(alpha = 0.12f)
+                                )
+                                InsightHighlightCard(
+                                    modifier = Modifier.weight(1f),
+                                    label = "🔴 Urgent",
+                                    value = "$highPriorityOverdue",
+                                    subtitle = "high priority",
+                                    iconColor = PriorityHigh,
+                                    bgColor = PriorityHigh.copy(alpha = 0.08f)
+                                )
+                                InsightHighlightCard(
+                                    modifier = Modifier.weight(1f),
+                                    label = "⏳ Oldest Lag",
+                                    value = "${oldestLagDays}d",
+                                    subtitle = "days behind",
+                                    iconColor = PriorityMedium,
+                                    bgColor = PriorityMedium.copy(alpha = 0.1f)
+                                )
+                            }
+
+                            // Priority distribution summary
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "Priority Split:",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = PriorityHigh.copy(alpha = 0.15f)
+                                ) {
+                                    Text(
+                                        "High: $highPriorityOverdue",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = PriorityHigh,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                    )
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = PriorityMedium.copy(alpha = 0.15f)
+                                ) {
+                                    Text(
+                                        "Med: $mediumPriorityOverdue",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = PriorityMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                    )
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = PriorityLow.copy(alpha = 0.15f)
+                                ) {
+                                    Text(
+                                        "Low: $lowPriorityOverdue",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = PriorityLow,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                    )
+                                }
+                            }
+
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                            // Overdue task previews
+                            var showAllOverdue by remember { mutableStateOf(false) }
+                            val displayTasks = if (showAllOverdue) overdueTasks else overdueTasks.take(4)
+
+                            displayTasks.forEach { task ->
+                                val daysAgo = remember(task.createdForDate) {
+                                    runCatching {
+                                        ChronoUnit.DAYS.between(LocalDate.parse(task.createdForDate), LocalDate.now()).toInt().coerceAtLeast(1)
+                                    }.getOrDefault(1)
+                                }
+                                val priorityColor = when (task.priority.lowercase()) {
+                                    "high" -> PriorityHigh
+                                    "medium" -> PriorityMedium
+                                    "low" -> PriorityLow
+                                    else -> MaterialTheme.colorScheme.primary
+                                }
+
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                                            Text(
+                                                text = task.title,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.SemiBold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Row(
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Surface(
+                                                    shape = RoundedCornerShape(6.dp),
+                                                    color = priorityColor.copy(alpha = 0.15f)
+                                                ) {
+                                                    Text(
+                                                        text = task.priority.replaceFirstChar { it.uppercase() },
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = priorityColor,
+                                                        fontWeight = FontWeight.Bold,
+                                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                                    )
+                                                }
+                                                Text(
+                                                    text = "• ${daysAgo}d overdue (${task.createdForDate})",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.error
+                                                )
+                                            }
+                                        }
+
+                                        IconButton(
+                                            onClick = { viewModel.moveTaskToToday(task) },
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Today,
+                                                contentDescription = "Reschedule to Today",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (overdueTasks.size > 4) {
+                                TextButton(
+                                    onClick = { showAllOverdue = !showAllOverdue },
+                                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                                ) {
+                                    Text(
+                                        text = if (showAllOverdue) "Show Less" else "Show ${overdueTasks.size - 4} More Overdue Tasks",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+
+                            Button(
+                                onClick = { viewModel.moveAllOverdueTasksToToday(overdueTasks) },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                            ) {
+                                Icon(Icons.Default.Update, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Reschedule All to Today (${overdueTasks.size})")
+                            }
+                        }
+                    }
+                }
+
                 // ── Focus Time & Workload Analytics ──
                 InsightSectionHeader("Focus Time & Workload Analytics", Icons.Default.Timer)
                 Card(
@@ -1250,7 +1498,8 @@ fun InsightsScreen(
                             projects = projects,
                             journalEntries = allJournalEntries,
                             journalStats = journalStats,
-                            achievementsUiState = achievementsUiState
+                            achievementsUiState = achievementsUiState,
+                            overdueTasks = overdueTasks
                         )
                         ReportExporter.shareReport(
                             context = context,

@@ -27,7 +27,8 @@ object ReportExporter {
         projects: List<Project>,
         journalEntries: List<JournalEntry> = emptyList(),
         journalStats: JournalViewModel.JournalStats? = null,
-        achievementsUiState: AchievementsUiState? = null
+        achievementsUiState: AchievementsUiState? = null,
+        overdueTasks: List<Task> = emptyList()
     ): String {
         val monthTitle = month.format(DateTimeFormatter.ofPattern("MMMM yyyy"))
         val builder = StringBuilder()
@@ -42,6 +43,7 @@ object ReportExporter {
             builder.appendLine("- Total Tasks: ${insightsData.totalTasksThisMonth}")
             builder.appendLine("- Completed Tasks: ${insightsData.completedTasksThisMonth}")
             builder.appendLine("- Completion Rate: ${insightsData.completionRateThisMonth}%")
+            builder.appendLine("- Overdue Tasks: ${overdueTasks.size}")
             builder.appendLine("- Current Task Streak: ${insightsData.currentStreak} days")
             builder.appendLine("- Best Day of Week: ${insightsData.bestDayOfWeek}")
             builder.appendLine("- Total Planned Workload: ${insightsData.totalEstimatedMinutes / 60}h ${insightsData.totalEstimatedMinutes % 60}m")
@@ -71,7 +73,19 @@ object ReportExporter {
             builder.appendLine()
         }
 
-        // 3. Projects Progress
+        // 3. Overdue Tasks
+        if (overdueTasks.isNotEmpty()) {
+            builder.appendLine("## Overdue Tasks (${overdueTasks.size})")
+            builder.appendLine("| Task | Scheduled Date | Priority | Tags |")
+            builder.appendLine("| --- | --- | --- | --- |")
+            overdueTasks.forEach { task ->
+                val tagsStr = if (task.tags.isNotBlank()) task.tags else "-"
+                builder.appendLine("| ${task.title} | ${task.createdForDate} | ${task.priority} | $tagsStr |")
+            }
+            builder.appendLine()
+        }
+
+        // 4. Projects Progress
         if (projects.isNotEmpty()) {
             builder.appendLine("## Projects Progress")
             builder.appendLine("| Project | Total Tasks | Completed | Progress |")
